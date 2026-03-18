@@ -1,0 +1,272 @@
+// 3D exploded object tree view
+import { el } from "../helpers";
+import { C, DEPTH_COLORS } from "../constants";
+import { registerHL, highlightObj, clearHighlight, selectObj, registerOverlay } from "../state";
+import type { Display, ObjectTree, ObjNode } from "../types";
+
+interface Layer {
+  addr: string; class_name: string;
+  x1: number; y1: number; x2: number; y2: number;
+  depth: number; localDepth: number;
+  child_count: number; style_count: number; screenIdx: number;
+}
+
+function flattenLayers(trees: ObjectTree[]) {
+  const layers: Layer[] = [];
+  const screenNames: string[] = [];
+  const screenMaxLocal: Record<number, number> = {};
+  let globalOffset = 0, sIdx = 0;
+
+  trees.forEach(t => (t.screens || []).forEach(s => {
+    const idx = sIdx++;
+    screenNames.push(s.layer_name || s.class_name || "screen_" + idx);
+    let maxLocal = 0;
+    function walk(obj: ObjNode, ld: number) {
+      const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
+      layers.push({
+        addr: obj.addr, class_name: obj.class_name || "obj",
+        x1: c.x1 || 0, y1: c.y1 || 0, x2: c.x2 || 0, y2: c.y2 || 0,
+        depth: globalOffset + ld, localDepth: ld,
+        child_count: obj.child_count || 0, style_count: obj.style_count || 0, screenIdx: idx,
+      });
+      maxLocal = Math.max(maxLocal, ld);
+      obj.children?.forEach(ch => walk(ch, ld + 1));
+    }
+    walk(s, 0);
+    screenMaxLocal[idx] = maxLocal;
+    globalOffset += maxLocal + C.SCREEN_GAP;
+  }));
+
+  return { layers, screenNames, screenMaxLocal };
+}
+
+type DispObjs = Record<string, { addr: string; x1: number; y1: number; x2: number; y2: number }[]>;
+
+export function build3DScene(container: HTMLElement, trees: ObjectTree[], displays: Display[], dispObjs: DispObjs) {
+  const { layers, screenNames, screenMaxLocal } = flattenLayers(trees);
+  if (!layers.length) { container.appendChild(el("p", "empty", "No objects.")); return; }
+
+  // Scene bounds from display resolution
+  let maxX = 0, maxY = 0, maxDepth = 0;
+  displays.forEach(d => { maxX = Math.max(maxX, d.hor_res || 0); maxY = Math.max(maxY, d.ver_res || 0); });
+  layers.forEach(l => { maxDepth = Math.max(maxDepth, l.depth); });
+  const sceneW = maxX || 1, sceneH = maxY || 1;
+  const scale = C.VIEWPORT_SIZE / Math.max(sceneW, sceneH);
+  const sw = sceneW * scale, sh = sceneH * scale;
+
+  // Buffer layer
+  let bufBase64: string | null = null;
+  displays.forEach(d => { if (bufBase64) return; [d.buf_1, d.buf_2].forEach(b => { if (!bufBase64 && b?.image_base64) bufBase64 = b.image_base64; }); });
+
+  let bufLayer: HTMLElement | null = null;
+  if (bufBase64) {
+    bufLayer = el("div", "scene-buf-layer");
+    bufLayer.style.width = sw + "px"; bufLayer.style.height = sh + "px";
+    const img = document.createElement("img");
+    img.src = "data:image/png;base64," + bufBase64;
+    img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "fill"; img.draggable = false;
+    bufLayer.appendChild(img);
+    const bufCanvas = document.createElement("canvas");
+    bufCanvas.className = "scene-buf-overlay"; bufCanvas.width = sw; bufCanvas.height = sh;
+    bufLayer.appendChild(bufCanvas);
+    displays.forEach(d => {
+      registerOverlay(d.addr + "-3d", { canvas: bufCanvas, w: d.hor_res, h: d.ver_res, objs: dispObjs[d.addr] || [] });
+    });
+  }
+
+  // Controls
+  const makeToggle = (label: string, on: boolean) => {
+    const btn = el("button", "scene-toggle-btn" + (on ? " active" : ""), label);
+    btn.dataset.on = on ? "1" : "0";
+    btn.onclick = () => { const v = btn.dataset.on === "1"; btn.dataset.on = v ? "0" : "1"; btn.classList.toggle("active", !v); };
+    return btn;
+  };
+  const controls = el("div", "scene-controls");
+  const toggle3d = makeToggle("3D", true);
+  const toggleBorders = makeToggle("Borders", true);
+  const toggleBuf = makeToggle("Buffer", !!bufBase64);
+  const toggleOrtho = makeToggle("Ortho", false);
+  controls.append(toggle3d, toggleBorders);
+  if (bufBase64) controls.appendChild(toggleBuf);
+  controls.appendChild(toggleOrtho);
+
+  const defaultSpread = maxDepth > 0 ? Math.round(300 / maxDepth) : 30;
+  const spreadSlider = document.createElement("input");
+  spreadSlider.type = "range"; spreadSlider.min = "0"; spreadSlider.max = String(Math.max(200, defaultSpread * 5));
+  spreadSlider.value = String(defaultSpread); spreadSlider.className = "scene-slider";
+  controls.appendChild(el("label", "scene-label", "Z Spread"));
+  controls.appendChild(spreadSlider);
+  const resetBtn = el("button", "scene-reset-btn", "Reset");
+  controls.appendChild(resetBtn);
+  container.appendChild(controls);
+
+  // Layer filter bar
+  const layerVisible: boolean[] = [];
+  const layerBtns: HTMLElement[] = [];
+  if (screenNames.length > 0) {
+    const bar = el("div", "scene-layer-bar");
+    screenNames.forEach((name, i) => {
+      const on = name === "act_scr" || screenNames.length === 1;
+      layerVisible.push(on);
+      const btn = el("button", "scene-layer-btn" + (on ? " active" : ""), name);
+      btn.style.borderBottomColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
+      btn.onclick = () => { layerVisible[i] = !layerVisible[i]; btn.classList.toggle("active", layerVisible[i]); applyVis(); };
+      btn.ondblclick = e => {
+        e.preventDefault();
+        const solo = layerVisible.every((v, j) => j === i ? v : !v);
+        if (solo) layerVisible.fill(true); else { layerVisible.fill(false); layerVisible[i] = true; }
+        layerBtns.forEach((b, j) => b.classList.toggle("active", layerVisible[j]));
+        applyVis();
+      };
+      layerBtns.push(btn); bar.appendChild(btn);
+    });
+    container.appendChild(bar);
+  }
+
+  // Tooltip
+  const tooltip = el("div", "scene-tooltip");
+  container.appendChild(tooltip);
+
+  // Viewport & scene
+  const viewport = el("div", "scene-viewport");
+  const scene = el("div", "scene-3d");
+  scene.style.width = sw + "px"; scene.style.height = sh + "px";
+  viewport.appendChild(scene);
+  container.appendChild(viewport);
+  if (bufLayer) scene.appendChild(bufLayer);
+
+  // Layer elements
+  const layerEls: { el: HTMLElement; depth: number; localDepth: number; screenIdx: number }[] = [];
+  layers.forEach(l => {
+    const div = el("div", "scene-layer");
+    const w = (l.x2 - l.x1) * scale, h = (l.y2 - l.y1) * scale;
+    div.style.width = Math.max(2, w) + "px"; div.style.height = Math.max(2, h) + "px";
+    div.style.left = (l.x1 * scale) + "px"; div.style.top = (l.y1 * scale) + "px";
+    div.style.borderColor = DEPTH_COLORS[l.depth % DEPTH_COLORS.length];
+    div.dataset.depth = String(l.depth); div.dataset.addr = l.addr || "";
+    div.dataset.screenIdx = String(l.screenIdx);
+    div.dataset.info = l.class_name + "@" + (l.addr || "?") + " [" + l.x1 + "," + l.y1 + "," + l.x2 + "," + l.y2 + "] children=" + l.child_count + " styles=" + l.style_count;
+    if (l.addr) registerHL(l.addr, div);
+    layerEls.push({ el: div, depth: l.depth, localDepth: l.localDepth, screenIdx: l.screenIdx });
+    scene.appendChild(div);
+  });
+
+  // Interaction state
+  const st = { rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, dragging: false as false | "rotate" | "pan", lastX: 0, lastY: 0, is3d: true, zoom: 1, panX: 0, panY: 0 };
+  let savedRotX = C.DEFAULT_ROT_X, savedRotY = C.DEFAULT_ROT_Y;
+  let animId: number | null = null;
+
+  function applyVis(spreadOv?: number) {
+    const bordersOn = toggleBorders.dataset.on === "1";
+    const screenOffset: Record<number, number> = {};
+    let off = 0;
+    for (let i = 0; i < screenNames.length; i++) {
+      if (layerVisible[i]) { screenOffset[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
+    }
+    const spread = spreadOv ?? (st.is3d ? Number(spreadSlider.value) : 0);
+    layerEls.forEach(le => {
+      if (!bordersOn || !layerVisible[le.screenIdx]) { le.el.style.display = "none"; return; }
+      le.el.style.display = "";
+      le.el.style.transform = "translateZ(" + ((screenOffset[le.screenIdx] + le.localDepth) * spread) + "px)";
+    });
+    if (bufLayer) bufLayer.style.transform = "translateZ(" + (-spread * 1.5) + "px)";
+  }
+
+  function applyRot(ov?: { rotX: number; rotY: number }) {
+    const ortho = toggleOrtho.dataset.on === "1";
+    viewport.style.perspective = ortho ? "none" : C.PERSPECTIVE_DISTANCE + "px";
+    const rx = ov ? ov.rotX : st.rotX, ry = ov ? ov.rotY : st.rotY;
+    const base = "translate(-50%,-50%) scale(" + st.zoom + ") translate(" + (st.panX / st.zoom) + "px," + (st.panY / st.zoom) + "px)";
+    scene.style.transform = (st.is3d || ov) ? base + " rotateX(" + rx + "deg) rotateY(" + ry + "deg)" : base;
+  }
+
+  function ease(t: number) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+  function animateToggle(entering: boolean) {
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    if (!entering) { savedRotX = st.rotX; savedRotY = st.rotY; }
+    const [fromRx, fromRy, toRx, toRy] = entering ? [0, 0, savedRotX, savedRotY] : [savedRotX, savedRotY, 0, 0];
+    const targetSpread = Number(spreadSlider.value);
+    const t0 = performance.now();
+    function tick(now: number) {
+      const t = ease(Math.min((now - t0) / C.ANIM_DURATION, 1));
+      applyRot({ rotX: fromRx + (toRx - fromRx) * t, rotY: fromRy + (toRy - fromRy) * t });
+      applyVis(entering ? targetSpread * t : targetSpread * (1 - t));
+      if (now - t0 < C.ANIM_DURATION) animId = requestAnimationFrame(tick);
+      else { animId = null; st.rotX = toRx; st.rotY = toRy; applyRot(); applyVis(); }
+    }
+    animId = requestAnimationFrame(tick);
+  }
+
+  applyVis(); applyRot();
+
+  // Event bindings
+  spreadSlider.oninput = () => applyVis();
+  toggle3d.addEventListener("click", () => { st.is3d = toggle3d.dataset.on === "1"; spreadSlider.disabled = !st.is3d; animateToggle(st.is3d); });
+  toggleOrtho.addEventListener("click", () => applyRot());
+  toggleBorders.addEventListener("click", () => applyVis());
+  if (bufBase64) toggleBuf.addEventListener("click", () => { if (bufLayer) bufLayer.style.display = toggleBuf.dataset.on === "1" ? "" : "none"; });
+
+  // Mouse interaction
+  viewport.onmousedown = e => {
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) { e.preventDefault(); st.dragging = "pan"; st.lastX = e.clientX; st.lastY = e.clientY; viewport.style.cursor = "move"; }
+    else if (e.button === 0 && st.is3d) { st.dragging = "rotate"; st.lastX = e.clientX; st.lastY = e.clientY; viewport.style.cursor = "grabbing"; }
+  };
+  window.addEventListener("mousemove", e => {
+    if (!st.dragging) return;
+    const dx = e.clientX - st.lastX, dy = e.clientY - st.lastY;
+    st.lastX = e.clientX; st.lastY = e.clientY;
+    if (st.dragging === "rotate") { st.rotY += dx * C.ROTATION_SENSITIVITY; st.rotX = Math.max(-90, Math.min(90, st.rotX - dy * C.ROTATION_SENSITIVITY)); }
+    else { st.panX += dx / st.zoom; st.panY += dy / st.zoom; }
+    applyRot();
+  });
+  window.addEventListener("mouseup", () => { st.dragging = false; viewport.style.cursor = "grab"; });
+  viewport.addEventListener("wheel", e => {
+    e.preventDefault();
+    if (e.ctrlKey) { st.zoom = Math.max(C.MIN_ZOOM, Math.min(C.MAX_ZOOM, st.zoom * (1 - e.deltaY * C.ZOOM_SENSITIVITY))); }
+    else { st.panX -= e.deltaX / st.zoom; st.panY -= e.deltaY / st.zoom; }
+    applyRot();
+  }, { passive: false });
+
+  // Hover & click
+  scene.addEventListener("mouseover", e => {
+    const t = (e.target as HTMLElement).closest(".scene-layer") as HTMLElement | null;
+    if (t) { tooltip.textContent = t.dataset.info || ""; tooltip.style.display = "block"; if (t.dataset.addr) highlightObj(t.dataset.addr); }
+  });
+  scene.addEventListener("mouseout", e => {
+    if ((e.target as HTMLElement).closest(".scene-layer")) { tooltip.style.display = "none"; clearHighlight(); }
+  });
+  scene.addEventListener("mousemove", e => {
+    if (tooltip.style.display === "block") {
+      const r = container.getBoundingClientRect();
+      tooltip.style.left = (e.clientX - r.left + 12) + "px"; tooltip.style.top = (e.clientY - r.top - 8) + "px";
+    }
+  });
+  scene.addEventListener("click", e => {
+    const t = (e.target as HTMLElement).closest(".scene-layer") as HTMLElement | null;
+    if (t?.dataset.addr) {
+      selectObj(t.dataset.addr);
+      const target = document.getElementById("obj-" + t.dataset.addr);
+      if (target) {
+        let p = target.parentElement;
+        while (p) { if (p.tagName === "DETAILS") (p as HTMLDetailsElement).open = true; p = p.parentElement; }
+        (target as HTMLDetailsElement).open = true;
+        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  });
+
+  // Reset
+  resetBtn.onclick = () => {
+    st.rotX = C.DEFAULT_ROT_X; st.rotY = C.DEFAULT_ROT_Y; st.zoom = 1; st.panX = 0; st.panY = 0; st.is3d = true;
+    spreadSlider.value = String(defaultSpread); spreadSlider.disabled = false;
+    toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
+    toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
+    if (toggleBuf) { toggleBuf.dataset.on = bufBase64 ? "1" : "0"; toggleBuf.classList.toggle("active", !!bufBase64); }
+    toggleOrtho.dataset.on = "0"; toggleOrtho.classList.remove("active");
+    screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
+    layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
+    if (bufLayer) bufLayer.style.display = bufBase64 ? "" : "none";
+    applyRot(); applyVis();
+  };
+}

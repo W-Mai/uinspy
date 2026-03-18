@@ -1,28 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="icon" type="image/svg+xml" href="./public/favicon.svg"/>
   <link rel="stylesheet" href="./generated/app.css"/>
-  <title>uinspy</title>
+  <title>LVGL Dashboard — uinspy</title>
 </head>
-<body class="min-h-screen bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400">
-  <main class="flex flex-col items-center justify-center min-h-screen gap-6 text-center p-8">
-    <div class="drop-shadow-lg">
-      <svg viewBox="0 0 64 64" width="72" height="72" aria-label="uinspy logo">
-        <rect width="64" height="64" rx="12" fill="#7c3aed"/>
-        <path d="M18 22h12v3H18zm0 8h20v3H18zm0 8h16v3H18zm32-16l-8 12 8 12h-6l-8-12 8-12z" fill="#fff"/>
-      </svg>
-    </div>
-    <h1 class="text-4xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">uinspy</h1>
-    <p class="text-sm">UI Inspector — zero dependency, single HTML file</p>
-    <ui-theme-toggle></ui-theme-toggle>
-    <ui-counter></ui-counter>
-    <ui-tree></ui-tree>
-    <ui-dashboard></ui-dashboard>
-    <ui-task-manager></ui-task-manager>
-  </main>
+<body>
+  <ui-topbar></ui-topbar>
+  <ui-drop-zone></ui-drop-zone>
+  <ui-dashboard></ui-dashboard>
+  <script id="lvgl-data" type="application/json">{{JSON_DATA}}</script>
   <script type="module" src="./src/app.ts"></script>
 </body>
 </html>

@@ -180,7 +180,8 @@ function compileNodes(nodes: ParsedNode[], parentVar: string, counter: number): 
 
   for (const node of nodes) {
     if (node.type === "text") {
-      children.push(`"${node.text}"`);
+      const escaped = node.text!.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "");
+      children.push(`"${escaped}"`);
     } else if (node.type === "expr") {
       children.push(node.expr!);
     } else if (node.type === "element") {

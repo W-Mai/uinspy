@@ -14,6 +14,7 @@ export function signal<T>(initial: T) {
     },
     sub(fn: Listener) {
       listeners.add(fn);
+      fn(); // Immediate call with current value
       return () => listeners.delete(fn);
     },
   };

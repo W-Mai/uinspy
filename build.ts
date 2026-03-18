@@ -24,16 +24,25 @@ if (!min.success || !full.success) {
   process.exit(1);
 }
 
-const cssMin = await Bun.file("./generated/app.min.css").text();
-const cssFull = await Bun.file("./generated/app.css").text();
+const twCssMin = await Bun.file("./generated/app.min.css").text();
+const twCssFull = await Bun.file("./generated/app.css").text();
 const jsMin = await Bun.file(`${tmpDir}/min/app.js`).text();
 const jsFull = await Bun.file(`${tmpDir}/full/app.js`).text();
+
+// Bun bundler outputs imported CSS alongside JS
+const bunCssMinFile = Bun.file(`${tmpDir}/min/app.css`);
+const bunCssFullFile = Bun.file(`${tmpDir}/full/app.css`);
+const bunCssMin = await bunCssMinFile.exists() ? await bunCssMinFile.text() : "";
+const bunCssFull = await bunCssFullFile.exists() ? await bunCssFullFile.text() : "";
+
+const cssMin = twCssMin + "\n" + bunCssMin;
+const cssFull = twCssFull + "\n" + bunCssFull;
 const favicon = await Bun.file("./public/favicon.svg").text();
 const faviconB64 = Buffer.from(favicon).toString("base64");
 
 // Read index.html as template, extract body content
 const indexHtml = await Bun.file("./index.html").text();
-const bodyMatch = indexHtml.match(/<body[^>]*>([\s\S]*?)<script/);
+const bodyMatch = indexHtml.match(/<body[^>]*>([\s\S]*)<script\s+type="module"/);
 const bodyAttrs = indexHtml.match(/<body([^>]*)>/)?.[1] ?? "";
 const bodyContent = bodyMatch?.[1] ?? "";
 
