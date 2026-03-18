@@ -6,31 +6,28 @@ import { build3DScene } from "./scene-3d.ui";
 import type { DashboardData, ObjNode } from "../types";
 
 const __css = css`
-  .disp-tab-bar { @apply flex gap-1 mb-2 pb-2; border-bottom: 1px solid var(--surface0); }
+  .disp-tab-bar { @apply flex gap-1 mb-2 pb-2 border-b-s0; }
   .disp-tab-btn {
-    @apply flex flex-col items-center gap-1 font-mono text-[11px] text-subtext0 cursor-pointer bg-mantle px-3 py-1;
-    border: 1px solid var(--surface0); border-bottom: none;
+    @apply flex flex-col items-center gap-1 font-mono text-[11px] text-subtext0 cursor-pointer bg-mantle px-3 py-1 border-s0; border-bottom: none;
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     transition: background var(--transition), color var(--transition);
   }
   .disp-tab-btn:hover { @apply bg-surface0; }
   .disp-tab-btn.active { @apply bg-base text-blue font-semibold; border-color: var(--blue); border-bottom: 2px solid var(--base); }
-  .disp-tab-thumb { @apply w-12 h-12 object-contain rounded bg-crust; border: 1px solid var(--surface0); image-rendering: pixelated; }
-  .disp-info-bar { @apply flex flex-wrap gap-1.5 mb-1 pb-2; border-bottom: 1px solid var(--surface0); }
+  .disp-tab-thumb { @apply w-12 h-12 object-contain rounded bg-crust border-s0 img-pixel; }
+  .disp-info-bar { @apply flex flex-wrap gap-1.5 mb-1 pb-2 border-b-s0; }
   .disp-chip {
-    @apply flex flex-wrap items-center gap-1.5 rounded-lg px-2.5 py-[5px] text-[11px] bg-base;
-    border: 1px solid var(--surface0);
+    @apply flex flex-wrap items-center gap-1.5 rounded-lg px-2.5 py-[5px] text-[11px] bg-base border-s0;
   }
   .disp-addr { @apply text-sapphire font-mono text-[11px]; }
   .disp-res { @apply text-txt font-semibold; }
   .disp-screens { @apply text-overlay1 text-[11px]; }
-  .obj-tree-header { @apply text-overlay1 text-[.75rem] mb-1 px-2 py-1; border-bottom: 1px solid var(--surface0); }
+  .obj-tree-header { @apply text-overlay1 text-[.75rem] mb-1 px-2 py-1 border-b-s0; }
   .obj-split { @apply flex items-stretch gap-2 h-[700px]; }
   .obj-split > .obj-tree-view { @apply flex-[0_0_220px] min-w-0 overflow-auto text-[11px]; }
   .obj-split > .obj-3d-view { @apply relative flex flex-col flex-1 min-w-0; }
   .obj-split > .obj-detail-view {
-    @apply flex-[0_0_280px] min-w-0 overflow-auto rounded-lg p-2.5 text-xs bg-base;
-    border: 1px solid var(--surface0);
+    @apply flex-[0_0_280px] min-w-0 overflow-auto rounded-lg p-2.5 text-xs bg-base border-s0;
   }
 `;
 

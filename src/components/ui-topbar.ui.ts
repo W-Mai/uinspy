@@ -26,14 +26,12 @@ class UiTopbar extends BaseComponent {
     }
     .topbar-nav { @apply flex gap-0.5 ml-auto; }
     .topbar-nav a {
-      @apply text-subtext0 no-underline whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium;
-      transition: all var(--transition);
+      @apply text-subtext0 no-underline whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium transition-theme;
     }
     .topbar-nav a:hover { @apply bg-surface0 text-txt; }
     .topbar-nav a.active { @apply bg-nav-active-bg text-blue; }
     .topbar-search {
-      @apply rounded-md w-40 ml-2 py-1 pr-2.5 pl-7 text-[11px] text-txt outline-none bg-base;
-      border: 1px solid var(--surface0); transition: all var(--transition);
+      @apply rounded-md w-40 ml-2 py-1 pr-2.5 pl-7 text-[11px] text-txt outline-none bg-base border-s0 transition-theme;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='var(--search-icon-fill)' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: 8px center;
     }

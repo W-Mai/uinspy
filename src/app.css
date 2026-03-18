@@ -151,3 +151,17 @@
   --version-border: 1px solid #00ff9f4d;
   --version-text-shadow: 0 0 4px #00ff9f4d;
 }
+
+/* ── Reusable utilities for repeated patterns ── */
+@utility border-s0 {
+  border: 1px solid var(--surface0);
+}
+@utility border-b-s0 {
+  border-bottom: 1px solid var(--surface0);
+}
+@utility transition-theme {
+  transition: all var(--transition);
+}
+@utility img-pixel {
+  image-rendering: pixelated;
+}

@@ -5,7 +5,7 @@ class UiDropZone extends BaseComponent {
   static __style = css`
     #drop-zone {
       @apply hidden flex-col items-center justify-center text-center text-overlay1 cursor-pointer rounded-xl min-h-[calc(100vh-92px)] p-12;
-      grid-column: 1 / -1; border: 2px dashed var(--surface1); transition: all var(--transition);
+      grid-column: 1 / -1; border: 2px dashed var(--surface1); @apply transition-theme;
     }
     #drop-zone:hover, #drop-zone.dragover { @apply border-blue bg-glow-blue; }
     .drop-icon { @apply text-4xl mb-2; }

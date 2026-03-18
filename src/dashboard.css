@@ -64,7 +64,7 @@
   thead { @apply sticky top-0 z-[1]; }
   th {
     @apply text-left uppercase text-overlay1 bg-base p-[6px_8px] text-[10px] font-semibold;
-    letter-spacing: .4px; border-bottom: 1px solid var(--surface0); text-shadow: var(--th-text-shadow);
+    letter-spacing: .4px; @apply border-b-s0; text-shadow: var(--th-text-shadow);
   }
   td {
     @apply p-[5px_8px] text-subtext1 whitespace-nowrap overflow-hidden text-ellipsis max-w-[260px];
@@ -74,7 +74,7 @@
   .table-wrap { @apply overflow-auto max-h-[400px]; }
   a.xref {
     @apply text-sapphire no-underline; border-bottom: 1px dotted #74c7ec4d;
-    transition: all var(--transition);
+    @apply transition-theme;
   }
   a.xref:hover { @apply text-blue; border-bottom-color: var(--blue); }
 

@@ -2,8 +2,7 @@
 class UiThemeToggle extends BaseComponent {
   static __style = css`
     .theme-toggle {
-      @apply flex items-center justify-center shrink-0 w-8 h-8 rounded-lg cursor-pointer text-[15px] text-overlay1 bg-base;
-      border: 1px solid var(--surface0); transition: all var(--transition);
+      @apply flex items-center justify-center shrink-0 w-8 h-8 rounded-lg cursor-pointer text-[15px] text-overlay1 bg-base border-s0 transition-theme;
     }
     .theme-toggle:hover { @apply border-blue text-blue; }
   `;

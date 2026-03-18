@@ -19,14 +19,14 @@ const __css = css`
   .obj-node[open] > summary::before { border-radius: 2px; }
   .obj-node > summary:hover { @apply bg-hover-summary; }
   .obj-node.obj-selected > summary { @apply bg-nav-active-bg; outline: 1px solid var(--blue); }
-  .detail-header { @apply flex items-center gap-2 mb-2.5 pb-2; border-bottom: 1px solid var(--surface0); }
+  .detail-header { @apply flex items-center gap-2 mb-2.5 pb-2 border-b-s0; }
   .detail-class { @apply text-blue text-sm font-bold; }
   .detail-section { @apply mb-2.5; }
   .detail-section-title { @apply uppercase text-overlay0 text-[10px] font-bold mb-1; letter-spacing: .5px; }
   .detail-coord-grid { @apply grid font-mono text-[11px]; grid-template-columns: auto 1fr auto 1fr auto 1fr; gap: 2px 8px; }
   .detail-coord-label { @apply text-overlay1 font-semibold; }
   .detail-coord-val { @apply text-txt; }
-  .detail-style-card { @apply rounded-lg mb-1 p-[6px_8px] bg-mantle; border: 1px solid var(--surface0); }
+  .detail-style-card { @apply rounded-lg mb-1 p-[6px_8px] bg-mantle border-s0; }
   .detail-style-hdr { @apply text-mauve text-[10px] font-semibold mb-1; }
   .detail-style-table { @apply w-full text-[11px]; }
   .detail-style-table th { @apply text-left p-[1px_4px] text-[9px]; }

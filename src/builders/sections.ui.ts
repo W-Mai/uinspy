@@ -5,21 +5,19 @@ import type { DashboardData } from "../types";
 
 const __css = css`
   /* Subject cards */
-  .subject-card { @apply overflow-hidden rounded-lg mb-1.5 last:mb-0 bg-base; border: 1px solid var(--surface0); }
-  .subject-header { @apply flex items-center gap-2 p-[6px_10px] text-[11px]; border-bottom: 1px solid var(--surface0); }
+  .subject-card { @apply overflow-hidden rounded-lg mb-1.5 last:mb-0 bg-base border-s0; }
+  .subject-header { @apply flex items-center gap-2 p-[6px_10px] text-[11px] border-b-s0; }
   .subject-addr { @apply text-sapphire font-mono; }
   .subject-type { @apply text-mauve font-semibold; }
   .subject-card table { @apply text-[11px]; }
 
   /* Card types */
   .timer-card, .anim-card, .indev-card, .group-card, .dtask-card {
-    @apply overflow-hidden rounded-lg mb-1.5 last:mb-0 bg-base;
-    border: 1px solid var(--surface0);
+    @apply overflow-hidden rounded-lg mb-1.5 last:mb-0 bg-base border-s0;
   }
   .timer-info-row { @apply flex flex-wrap gap-[4px_16px]; }
   .anim-header, .timer-header, .indev-header, .group-header, .dtask-header {
-    @apply flex items-center gap-2 p-[6px_10px];
-    border-bottom: 1px solid var(--surface0);
+    @apply flex items-center gap-2 p-[6px_10px] border-b-s0;
   }
   .anim-info, .timer-info, .indev-info, .group-info, .dtask-info { @apply p-[6px_10px]; }
   .anim-value-row { @apply flex items-center gap-2 my-1; }
@@ -32,8 +30,8 @@ const __css = css`
 
   /* Cache grid */
   .cache-grid { @apply grid gap-1.5; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-  .cache-entry { @apply flex items-center overflow-hidden rounded-lg bg-base; border: 1px solid var(--surface0); }
-  .cache-thumb { @apply shrink-0 w-9 h-9 m-1.5 rounded object-contain bg-surface0; image-rendering: pixelated; }
+  .cache-entry { @apply flex items-center overflow-hidden rounded-lg bg-base border-s0; }
+  .cache-thumb { @apply shrink-0 w-9 h-9 m-1.5 rounded object-contain bg-surface0 img-pixel; }
   .cache-info { @apply flex-1 min-w-0 p-[4px_8px]; }
   .cache-src { @apply text-txt text-[10px] font-medium overflow-hidden text-ellipsis whitespace-nowrap mb-0.5; }
   .cache-meta-row { @apply flex flex-wrap items-center gap-[3px]; }
@@ -42,7 +40,7 @@ const __css = css`
 
   /* Unit/decoder/fs grids */
   .unit-grid, .decoder-grid, .fs-grid { @apply grid gap-1.5; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  .unit-card, .decoder-card, .fs-card { @apply text-center rounded-lg p-2.5 bg-base; border: 1px solid var(--surface0); }
+  .unit-card, .decoder-card, .fs-card { @apply text-center rounded-lg p-2.5 bg-base border-s0; }
   .unit-name, .decoder-name { @apply text-txt text-xs font-semibold mb-0.5; }
   .unit-idx { @apply text-blue text-lg font-bold; }
   .decoder-cbs { @apply flex justify-center gap-1 my-1.5; }
