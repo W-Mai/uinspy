@@ -1,20 +1,6 @@
 //@ component("ui-counter")
 class UiCounter extends BaseComponent {
-  static __style = css`
-    button {
-      font-family: ui-monospace, monospace;
-      font-size: 14px;
-      padding: 6px 16px;
-      border-radius: 6px;
-      color: #7c3aed;
-      background: rgba(124, 58, 237, 0.1);
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    button:hover { border-color: rgba(124, 58, 237, 0.5); }
-  `;
-  static __template = html`<button>Count is 0</button>`;
+  static __template = html`<button class="font-mono text-sm px-4 py-1.5 rounded-md text-accent bg-accent/10 border-2 border-transparent hover:border-accent/50 dark:text-accent-light dark:bg-accent-light/10 dark:hover:border-accent-light/50 cursor-pointer transition-colors">Count is 0</button>`;
 
   private count = signal(0);
 
