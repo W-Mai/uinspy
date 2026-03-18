@@ -27,6 +27,13 @@ export abstract class BaseComponent extends HTMLElement {
 
   protected abstract render(): void;
 
+  // Runtime fallback for this.html`...` — compiled away by plugin
+  protected html(strings: TemplateStringsArray, ...values: unknown[]): HTMLElement {
+    const t = document.createElement("template");
+    t.innerHTML = String.raw(strings, ...values);
+    return t.content.firstElementChild as HTMLElement;
+  }
+
   // Re-render: clear children, re-mount template, re-run bindings
   update() {
     this.innerHTML = "";
