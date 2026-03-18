@@ -1,5 +1,5 @@
 import { rm, mkdir } from "fs/promises";
-import { uiPlugin } from "./src/plugin";
+import { uiPlugin } from "./framework/plugin";
 
 const tmpDir = ".build_tmp";
 await rm(tmpDir, { recursive: true, force: true });

@@ -1,2 +1,2 @@
 [serve.static]
-plugins = ["./src/plugin.ts"]
+plugins = ["./framework/plugin.ts"]

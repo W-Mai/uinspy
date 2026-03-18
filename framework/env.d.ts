@@ -1,5 +1,5 @@
-// Compile-time type declarations for .ui.ts components
-// Plugin (src/plugin.ts) auto-injects actual imports at build time
+// Global type declarations for .ui.ts component files
+// Actual imports are injected by framework/plugin.ts at build time
 
 /** Tagged template for CSS strings. Enables IDE CSS highlighting */
 declare function css(strings: TemplateStringsArray, ...values: unknown[]): string;
@@ -8,4 +8,4 @@ declare function css(strings: TemplateStringsArray, ...values: unknown[]): strin
 declare function signal<T>(initial: T): import("./signal").Signal<T>;
 
 /** Base class for components. Auto-imported in .ui.ts files */
-declare const BaseComponent: typeof import("./components/base").BaseComponent;
+declare const BaseComponent: typeof import("./base").BaseComponent;

@@ -1,4 +1,5 @@
 import type { BunPlugin } from "bun";
+import { resolve, relative, dirname } from "path";
 
 /**
  * Bun plugin that transforms .ui.ts component files.
@@ -11,12 +12,15 @@ import type { BunPlugin } from "bun";
  *   }
  *
  * Transforms:
- *   1. Auto-inject imports (BaseComponent, signal)
+ *   1. Auto-inject imports from framework/
  *   2. //@ component("tag") → customElements.define()
  *   3. css`...` → plain template string
  *   4. render() return → this.root.append()
  *   5. render() → protected render()
  */
+
+const frameworkDir = resolve(import.meta.dir);
+
 export const uiPlugin: BunPlugin = {
   name: "uinspy-ui",
   setup(build) {
@@ -31,7 +35,6 @@ export const uiPlugin: BunPlugin = {
       while ((m = compRe.exec(original)) !== null) {
         defines.push(`customElements.define("${m[1]}", ${m[2]});`);
       }
-      // Remove //@ component(...) lines
       code = code.replace(/\/\/@\s*component\(["'][^"']+["']\)\s*\n/g, "");
 
       // 2. css`` → plain template string
@@ -46,17 +49,18 @@ export const uiPlugin: BunPlugin = {
       // 4. Make render() protected
       code = code.replace(/^(\s+)render\(\)/gm, "$1protected render()");
 
-      // 5. Auto-inject imports (replace any existing ones)
-      const inComponents = args.path.includes("/components/");
-      const basePath = inComponents ? "./base" : "./components/base";
-      const signalPath = inComponents ? "../signal" : "./signal";
+      // 5. Compute relative path from component file to framework/
+      const fileDir = dirname(args.path);
+      let rel = relative(fileDir, frameworkDir).replace(/\\/g, "/");
+      if (!rel.startsWith(".")) rel = "./" + rel;
 
+      // Remove existing framework imports
       code = code.replace(/import\s*\{[^}]*BaseComponent[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
       code = code.replace(/import\s*\{[^}]*signal[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
 
-      const imports = [`import { BaseComponent } from "${basePath}";`];
+      const imports = [`import { BaseComponent } from "${rel}/base";`];
       if (code.includes("signal(")) {
-        imports.push(`import { signal } from "${signalPath}";`);
+        imports.push(`import { signal } from "${rel}/signal";`);
       }
       code = imports.join("\n") + "\n" + code;
 
