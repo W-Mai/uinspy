@@ -7,10 +7,11 @@ All components compile to a single self-contained HTML file.
 
 ```
 framework/
-  base.ts      — BaseComponent: template mount, style inject (no Shadow DOM)
+  base.ts      — BaseComponent: template mount, style inject, update()
   signal.ts    — Reactive signal: get/set .val, subscribe via .sub()
+  store.ts     — Shared reactive store: keyed bag of signals
   plugin.ts    — Bun plugin: transforms .ui.ts → standard TS at build time
-  env.d.ts     — Global type declarations (css, html, signal, BaseComponent)
+  env.d.ts     — Global type declarations (css, html, signal, store, BaseComponent)
   index.ts     — Barrel export
 ```
 
@@ -29,12 +30,57 @@ class MyTag extends BaseComponent {
 }
 ```
 
+### Nested Template
+
+```ts
+//@ component("my-card")
+class MyCard extends BaseComponent {
+  static __template = html`
+    <div class="card">
+      <div class="header"><span>Title</span></div>
+      <div class="body"></div>
+    </div>
+  `;
+  render() {}
+}
+```
+
+### Component Composition
+
+Custom component tags work in templates:
+
+```ts
+//@ component("my-app")
+class MyApp extends BaseComponent {
+  static __template = html`
+    <div>
+      <my-header></my-header>
+      <my-content></my-content>
+    </div>
+  `;
+  render() {}
+}
+```
+
+### Inline Templates (Dynamic DOM)
+
+Use `this.html` inside methods for dynamic DOM creation:
+
+```ts
+renderItem(name: string) {
+  return this.html`<div class="item"><span>${name}</span></div>`;
+}
+
+render() {
+  items.forEach(item => this.el.appendChild(this.renderItem(item.name)));
+}
+```
+
 ### Component with State
 
 ```ts
 //@ component("my-counter")
 class MyCounter extends BaseComponent {
-  static __style = css`button { color: #7c3aed; }`;
   static __template = html`<button>0</button>`;
   private count = signal(0);
 
@@ -45,18 +91,40 @@ class MyCounter extends BaseComponent {
 }
 ```
 
-## Styling
-
-Components use **light DOM** (no Shadow DOM). Two styling approaches coexist:
-
-- **`__style` (component CSS)** — scoped automatically at compile time. Selectors are prefixed with the component tag name (e.g. `button {}` → `ui-counter button {}`). `:host` compiles to the tag name itself.
-- **Tailwind classes** — usable directly in templates since there's no Shadow DOM barrier.
+### Shared State Across Components
 
 ```ts
-// __style scoping example (source → compiled)
+// src/state.ts
+const appState = store({ selectedId: null as string | null });
+export default appState;
+
+// In any component
+import appState from "../state";
+render() {
+  appState.selectedId.sub(() => { /* react to changes */ });
+}
+```
+
+### Re-rendering
+
+```ts
+const panel = document.querySelector("my-panel") as MyPanel;
+panel.data = newData;
+panel.update(); // clears DOM, re-mounts template, re-runs render()
+```
+
+## Styling
+
+Components use light DOM (no Shadow DOM). Two approaches coexist:
+
+- **`__style`** — component CSS, auto-scoped at compile time with tag name prefix. Handles `@media`, `@keyframes`, `:host`, pseudo-elements correctly.
+- **Tailwind classes** — usable directly in templates.
+
+```ts
+// Source → Compiled
 css`button { color: red; }`       → `my-tag button { color: red; }`
 css`:host { display: block; }`    → `my-tag { display: block; }`
-css`.title { font-size: 16px; }`  → `my-tag .title { font-size: 16px; }`
+css`@media (...) { .x { ... } }` → `@media (...) { my-tag .x { ... } }`
 ```
 
 ## API Reference
@@ -68,6 +136,7 @@ css`.title { font-size: 16px; }`  → `my-tag .title { font-size: 16px; }`
 | `this.el` | `HTMLElement` | Template root element, auto-assigned before `render()` |
 | `this.$<T>(sel)` | `T` | Query helper on component's children |
 | `render()` | abstract | Called after template mounted. Bindings go here |
+| `update()` | method | Re-render: clear DOM, re-mount template, re-run render |
 | `static __style` | `string` | Component CSS, auto-scoped with tag name prefix |
 | `static __template` | `() => HTMLElement` | DOM factory, compiled from `html\`` |
 
@@ -80,33 +149,70 @@ count.val = 1;       // write (triggers subscribers, skips if same value)
 count.sub(() => {}); // subscribe, returns unsubscribe function
 ```
 
-## Compile-Time Transforms (plugin.ts)
+### store\<T\>(init)
 
-The plugin processes `.ui.ts` files in this order:
+```ts
+const state = store({ name: "hello", count: 0 });
+state.name.val;          // read
+state.count.val = 1;     // write
+state.count.sub(() => {});  // subscribe
+```
+
+Each key becomes an independent signal.
+
+## Compile-Time Transforms (plugin.ts)
 
 | Step | Source | Output |
 |------|--------|--------|
 | 1 | `//@ component("tag")` | Removed; `customElements.define()` appended |
 | 2 | `` css`...` `` | Plain string with selectors prefixed by tag name |
-| 3 | `` static __template = html`<tag>...</tag>` `` | DOM factory: `() => { createElement + setAttribute + append }` |
-| 4 | `render()` | `protected render()` |
-| 5 | (auto) | `import { BaseComponent }` and `import { signal }` injected |
+| 3 | `` static __template = html`...` `` | DOM factory with recursive `createElement` calls |
+| 4 | `` this.html`...` `` | IIFE returning element via `createElement` calls |
+| 5 | `render()` | `protected render()` |
+| 6 | (auto) | `import { BaseComponent, signal, store }` injected as needed |
 
 ### What you DON'T write
 
-- No `import` statements — auto-injected
+- No `import` statements — auto-injected based on usage
 - No `customElements.define()` — generated from `//@ component`
 - No `protected` on `render()` — auto-added
 - No `this.el` declaration — inherited from `BaseComponent`
 
-## Rules
+## Patterns
 
-1. **One root element per template** — `html\`` must contain exactly one root element
-2. **`this.el` is the root** — no need to query it, no need to declare it
-3. **`declare el: HTMLInputElement`** — only when you need type narrowing (e.g. `.value`)
-4. **`render()` is for bindings** — DOM structure is static, `render()` wires up events and subscriptions
-5. **No runtime HTML parsing** — `html\`` compiles to `createElement` calls (falls back to `innerHTML` only for complex HTML the compiler can't parse)
-6. **Tailwind + `__style` coexist** — use Tailwind classes in templates, use `__style` for component-specific CSS
+### Dynamic Lists — plain JS loops + `this.html`
+
+```ts
+render() {
+  items.forEach(item => this.el.appendChild(
+    this.html`<div class="card">${item.name}</div>`
+  ));
+}
+```
+
+### Conditional Rendering — plain JS
+
+```ts
+render() {
+  if (this.data) this.el.appendChild(this.html`<div>...</div>`);
+}
+```
+
+### Global Events — native CustomEvent
+
+```ts
+// Emit
+document.dispatchEvent(new CustomEvent("search", { detail: query }));
+// Listen
+document.addEventListener("search", (e) => { /* e.detail */ });
+```
+
+### Theming — Tailwind @custom-variant
+
+```css
+@custom-variant dark (&:where(.dark, .dark *));
+@theme { --color-accent: #7c3aed; }
+```
 
 ## Build
 
@@ -115,4 +221,9 @@ bun run build    # → dist/uinspy.html (readable) + dist/uinspy.min.html
 bun run dev      # → Tailwind watch + Bun dev server
 ```
 
-Readable version uses `{ syntax: true, whitespace: false, identifiers: false }` — optimized code, preserved formatting.
+## Runtime Budget
+
+- `BaseComponent`: ~35 lines
+- `signal`: ~15 lines
+- `store`: ~8 lines
+- **Total: ~58 lines runtime**

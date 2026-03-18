@@ -174,19 +174,19 @@ Toggle component switches class on `<html>`. No framework involvement, no additi
 ## Implementation Order
 
 ```
-Phase 1 — Compile-time rendering power
-  G1  Nested template compilation     (plugin.ts)
-  G5  update() method                 (base.ts, +~3 lines)
-  G7  Robust CSS scoping              (plugin.ts)
+Phase 1 — Compile-time rendering power          ✅ DONE
+  G1  Nested template compilation               (plugin.ts)
+  G5  update() method                           (base.ts)
+  G7  Robust CSS scoping                        (plugin.ts)
 
-Phase 2 — Data-driven patterns
-  G2  store() factory                 (store.ts, ~5 lines)
-  G3  Enabled by G1 — no work needed
-  G4  No work needed — plain JS
+Phase 2 — Data-driven patterns                   ✅ DONE
+  G2  store() factory                           (store.ts)
+  G3  Enabled by G1 — no framework code needed
+  G4  No framework code needed — plain JS
 
-Phase 3 — Documentation only
-  G6  Document native CustomEvent pattern
-  G8  No work needed — Tailwind @custom-variant + @theme handles it
+Phase 3 — Documentation                          ✅ DONE
+  G6  Native CustomEvent — documented in README
+  G8  Tailwind @custom-variant + @theme — documented in README
 ```
 
 ## Runtime Budget Target

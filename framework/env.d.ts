@@ -12,3 +12,6 @@ declare function signal<T>(initial: T): import("./signal").Signal<T>;
 
 /** Base class for components. Auto-imported in .ui.ts files */
 declare const BaseComponent: typeof import("./base").BaseComponent;
+
+/** Shared reactive store factory. Auto-imported in .ui.ts files */
+declare function store<T extends Record<string, unknown>>(init: T): import("./store").Store<T>;

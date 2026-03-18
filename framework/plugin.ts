@@ -323,10 +323,14 @@ export const uiPlugin: BunPlugin = {
 
       code = code.replace(/import\s*\{[^}]*BaseComponent[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
       code = code.replace(/import\s*\{[^}]*signal[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
+      code = code.replace(/import\s*\{[^}]*store[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
 
       const imports = [`import { BaseComponent } from "${rel}/base";`];
       if (code.includes("signal(")) {
         imports.push(`import { signal } from "${rel}/signal";`);
+      }
+      if (code.includes("store(")) {
+        imports.push(`import { store } from "${rel}/store";`);
       }
       code = imports.join("\n") + "\n" + code;
 
