@@ -3,6 +3,55 @@ import { el, makePanel, makeTable, badge, kvPair, xref, xrefCell, buildCard, pro
 import { C, INDEV_ICONS } from "../constants";
 import type { DashboardData } from "../types";
 
+const __css = css`
+  /* Subject cards */
+  .subject-card { @apply overflow-hidden rounded-lg mb-1.5 last:mb-0 bg-base; border: 1px solid var(--surface0); }
+  .subject-header { @apply flex items-center gap-2 p-[6px_10px] text-[11px]; border-bottom: 1px solid var(--surface0); }
+  .subject-addr { @apply text-sapphire font-mono; }
+  .subject-type { @apply text-mauve font-semibold; }
+  .subject-card table { @apply text-[11px]; }
+
+  /* Card types */
+  .timer-card, .anim-card, .indev-card, .group-card, .dtask-card {
+    @apply overflow-hidden rounded-lg mb-1.5 last:mb-0 bg-base;
+    border: 1px solid var(--surface0);
+  }
+  .timer-info-row { @apply flex flex-wrap gap-[4px_16px]; }
+  .anim-header, .timer-header, .indev-header, .group-header, .dtask-header {
+    @apply flex items-center gap-2 p-[6px_10px];
+    border-bottom: 1px solid var(--surface0);
+  }
+  .anim-info, .timer-info, .indev-info, .group-info, .dtask-info { @apply p-[6px_10px]; }
+  .anim-value-row { @apply flex items-center gap-2 my-1; }
+  .anim-val-label { @apply text-overlay1 whitespace-nowrap font-mono text-[10px]; }
+  .anim-cur-val { @apply text-overlay1 text-right text-[10px]; }
+  .indev-type-icon { @apply text-lg; }
+  .indev-type-name { @apply text-txt text-xs font-semibold; }
+  .group-members { @apply mt-1; }
+  .member-list { @apply flex flex-wrap gap-1 font-mono text-[10px]; }
+
+  /* Cache grid */
+  .cache-grid { @apply grid gap-1.5; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .cache-entry { @apply flex items-center overflow-hidden rounded-lg bg-base; border: 1px solid var(--surface0); }
+  .cache-thumb { @apply shrink-0 w-9 h-9 m-1.5 rounded object-contain bg-surface0; image-rendering: pixelated; }
+  .cache-info { @apply flex-1 min-w-0 p-[4px_8px]; }
+  .cache-src { @apply text-txt text-[10px] font-medium overflow-hidden text-ellipsis whitespace-nowrap mb-0.5; }
+  .cache-meta-row { @apply flex flex-wrap items-center gap-[3px]; }
+  .cache-size-label { @apply text-overlay1 text-[10px]; }
+  .cache-decoder-label { @apply text-overlay0 text-[10px] mt-0.5; }
+
+  /* Unit/decoder/fs grids */
+  .unit-grid, .decoder-grid, .fs-grid { @apply grid gap-1.5; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .unit-card, .decoder-card, .fs-card { @apply text-center rounded-lg p-2.5 bg-base; border: 1px solid var(--surface0); }
+  .unit-name, .decoder-name { @apply text-txt text-xs font-semibold mb-0.5; }
+  .unit-idx { @apply text-blue text-lg font-bold; }
+  .decoder-cbs { @apply flex justify-center gap-1 my-1.5; }
+  .fs-letter { @apply text-blue font-mono text-2xl font-extrabold; }
+  .fs-driver-name { @apply text-subtext0 text-[11px] mb-1; }
+  .fs-info { @apply text-[11px]; }
+  .fs-cbs { @apply flex justify-center gap-[3px] mt-1; }
+`;
+
 export function buildSimpleTable(data: DashboardData, key: string, cls: string, icon: string, title: string, headers: string[], prefix: string) {
   const items = (data as any)[key] || [];
   const { panel, body } = makePanel(cls, icon, title, items.length);

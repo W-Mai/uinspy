@@ -4,6 +4,46 @@ import { C, DEPTH_COLORS } from "../constants";
 import { registerHL, highlightObj, clearHighlight, selectObj, registerOverlay } from "../state";
 import type { Display, ObjectTree, ObjNode } from "../types";
 
+const __css = css`
+  .scene-controls { @apply flex items-center gap-2 mb-1 py-1.5; }
+  .scene-label { @apply text-overlay1 uppercase text-[10px] font-medium; letter-spacing: .3px; }
+  .scene-slider { @apply w-30 h-1 cursor-pointer; accent-color: var(--blue); }
+  .scene-reset-btn, .scene-toggle-btn {
+    @apply rounded py-0.5 px-2 text-[10px] text-overlay1 cursor-pointer bg-base;
+    border: 1px solid var(--surface0); transition: all var(--transition);
+  }
+  .scene-reset-btn:hover, .scene-toggle-btn:hover { @apply border-blue text-blue; }
+  .scene-toggle-btn { @apply font-semibold; }
+  .scene-toggle-btn.active { @apply bg-icon-bg-blue text-blue border-blue; }
+  .scene-layer-bar { @apply flex flex-wrap gap-1 py-1; }
+  .scene-layer-btn {
+    @apply rounded py-0.5 px-2 font-mono text-[10px] font-medium text-overlay0 cursor-pointer select-none bg-base;
+    border: 1px solid var(--surface0); border-bottom: 2px solid var(--surface1);
+    transition: all var(--transition);
+  }
+  .scene-layer-btn:hover { @apply border-blue text-txt; }
+  .scene-layer-btn.active { @apply bg-icon-bg-blue text-txt border-blue; }
+  .scene-viewport {
+    @apply relative flex-1 w-full min-h-[400px] overflow-hidden cursor-grab rounded-lg bg-crust;
+    perspective: 1200px; border: 1px solid var(--surface0); transform-origin: center center;
+  }
+  .scene-3d { @apply absolute; transform-style: preserve-3d; top: 50%; left: 50%; }
+  .scene-layer {
+    @apply absolute rounded-sm cursor-pointer;
+    background: var(--scene-layer-bg); border: 1.5px solid;
+    transition: background .15s, box-shadow .15s;
+  }
+  .scene-buf-layer { @apply absolute overflow-hidden pointer-events-none rounded-sm; box-shadow: 0 0 0 1px var(--surface1); }
+  .scene-buf-layer img { @apply block; image-rendering: pixelated; }
+  .scene-buf-overlay { @apply absolute inset-0 w-full h-full pointer-events-none; }
+  .scene-layer.hl-active { background: var(--scene-layer-hover-bg); box-shadow: var(--scene-layer-hover-shadow); z-index: 10; }
+  .obj-node.hl-active > summary { @apply bg-nav-active-bg text-blue rounded; }
+  .scene-tooltip {
+    @apply hidden absolute z-50 whitespace-nowrap pointer-events-none rounded-md px-2 py-1 font-mono text-[10px] text-txt bg-base;
+    border: 1px solid var(--surface0); box-shadow: 0 4px 12px #0000004d;
+  }
+`;
+
 interface Layer {
   addr: string; class_name: string;
   x1: number; y1: number; x2: number; y2: number;

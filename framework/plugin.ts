@@ -344,7 +344,11 @@ export const uiPlugin: BunPlugin = {
           return `${prefix}\`\``;
         });
       }
-      code = code.replace(/\bcss`/g, "`");
+      // Strip css`` tag; collect any remaining (non-component) CSS for Tailwind
+      code = code.replace(/\bcss`([\s\S]*?)`/g, (_, content) => {
+        if (content.trim()) collectedCSS.push(content);
+        return "`" + content + "`";
+      });
 
       // Compile templates (static + inline)
       code = transformStaticTemplates(code);
