@@ -3,6 +3,22 @@ import { resolve, relative, dirname } from "path";
 
 const frameworkDir = resolve(import.meta.dir);
 
+// Prefix CSS selectors with component tag name for scoping
+function scopeCSS(css: string, tag: string): string {
+  return css.replace(
+    /([^{}@/]+?)(\{[^}]*\})/g,
+    (_, selectors: string, body: string) => {
+      const scoped = selectors.split(",").map((s) => {
+        s = s.trim();
+        if (!s || s.startsWith("@")) return s;
+        if (s === ":host") return tag;
+        return `${tag} ${s}`;
+      }).join(", ");
+      return `${scoped} ${body}`;
+    }
+  );
+}
+
 function compileAttrs(attrsStr: string): string {
   if (!attrsStr.trim()) return "";
   const attrRe = /([\w-]+)="([^"]*)"/g;
@@ -83,16 +99,28 @@ export const uiPlugin: BunPlugin = {
       const original = await Bun.file(args.path).text();
       let code = original;
 
-      // //@ component → customElements.define
+      // //@ component → collect tag→class mappings, append customElements.define
       const defines: string[] = [];
+      const tagMap = new Map<string, string>(); // className → tagName
       const compRe = /\/\/@\s*component\(["']([^"']+)["']\)[\s\S]*?class\s+(\w+)/g;
       let m: RegExpExecArray | null;
       while ((m = compRe.exec(original)) !== null) {
         defines.push(`customElements.define("${m[1]}", ${m[2]});`);
+        tagMap.set(m[2], m[1]);
       }
       code = code.replace(/\/\/@\s*component\(["'][^"']+["']\)\s*\n/g, "");
 
-      // css`` → plain string
+      // Scope css`` with component tag name, then strip tag
+      for (const [className, tagName] of tagMap) {
+        // Match: static __style = css`...` inside the class
+        const styleRe = new RegExp(
+          `(class\\s+${className}[\\s\\S]*?static\\s+__style\\s*=\\s*)css\`([\\s\\S]*?)\``,
+        );
+        code = code.replace(styleRe, (_, prefix, cssContent) => {
+          return `${prefix}\`${scopeCSS(cssContent, tagName)}\``;
+        });
+      }
+      // Strip remaining css`` (if any)
       code = code.replace(/\bcss`/g, "`");
 
       // Compile static __template = html`...`

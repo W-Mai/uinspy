@@ -7,7 +7,7 @@ All components compile to a single self-contained HTML file.
 
 ```
 framework/
-  base.ts      — BaseComponent: Shadow DOM, template mount, style inject
+  base.ts      — BaseComponent: template mount, style inject (no Shadow DOM)
   signal.ts    — Reactive signal: get/set .val, subscribe via .sub()
   plugin.ts    — Bun plugin: transforms .ui.ts → standard TS at build time
   env.d.ts     — Global type declarations (css, html, signal, BaseComponent)
@@ -45,6 +45,20 @@ class MyCounter extends BaseComponent {
 }
 ```
 
+## Styling
+
+Components use **light DOM** (no Shadow DOM). Two styling approaches coexist:
+
+- **`__style` (component CSS)** — scoped automatically at compile time. Selectors are prefixed with the component tag name (e.g. `button {}` → `ui-counter button {}`). `:host` compiles to the tag name itself.
+- **Tailwind classes** — usable directly in templates since there's no Shadow DOM barrier.
+
+```ts
+// __style scoping example (source → compiled)
+css`button { color: red; }`       → `my-tag button { color: red; }`
+css`:host { display: block; }`    → `my-tag { display: block; }`
+css`.title { font-size: 16px; }`  → `my-tag .title { font-size: 16px; }`
+```
+
 ## API Reference
 
 ### BaseComponent
@@ -52,10 +66,9 @@ class MyCounter extends BaseComponent {
 | Member | Type | Description |
 |--------|------|-------------|
 | `this.el` | `HTMLElement` | Template root element, auto-assigned before `render()` |
-| `this.root` | `ShadowRoot` | Shadow root for direct DOM access |
-| `this.$<T>(sel)` | `T` | Query helper on shadow root |
-| `render()` | abstract | Called after template mounted. Bindingsgo here |
-| `static __style` | `string` | Scoped CSS, injected into shadow root |
+| `this.$<T>(sel)` | `T` | Query helper on component's children |
+| `render()` | abstract | Called after template mounted. Bindings go here |
+| `static __style` | `string` | Component CSS, auto-scoped with tag name prefix |
 | `static __template` | `() => HTMLElement` | DOM factory, compiled from `html\`` |
 
 ### signal\<T\>(initial)
@@ -74,7 +87,7 @@ The plugin processes `.ui.ts` files in this order:
 | Step | Source | Output |
 |------|--------|--------|
 | 1 | `//@ component("tag")` | Removed; `customElements.define()` appended |
-| 2 | `` css`...` `` | Plain template string (`` `...` ``) |
+| 2 | `` css`...` `` | Plain string with selectors prefixed by tag name |
 | 3 | `` static __template = html`<tag>...</tag>` `` | DOM factory: `() => { createElement + setAttribute + append }` |
 | 4 | `render()` | `protected render()` |
 | 5 | (auto) | `import { BaseComponent }` and `import { signal }` injected |
@@ -91,9 +104,9 @@ The plugin processes `.ui.ts` files in this order:
 1. **One root element per template** — `html\`` must contain exactly one root element
 2. **`this.el` is the root** — no need to query it, no need to declare it
 3. **`declare el: HTMLInputElement`** — only when you need type narrowing (e.g. `.value`)
-4. **Scoped styles** — all CSS lives in Shadow DOM, no leaking
-5. **`render()` is for bindings** — DOM structure is static, `render()` wires up events and subscriptions
-6. **No runtime HTML parsing** — `html\`` compiles to `createElement` calls, no `innerHTML` at runtime (falls back to `innerHTML` only for complex/nested HTML the compiler can't parse)
+4. **`render()` is for bindings** — DOM structure is static, `render()` wires up events and subscriptions
+5. **No runtime HTML parsing** — `html\`` compiles to `createElement` calls (falls back to `innerHTML` only for complex HTML the compiler can't parse)
+6. **Tailwind + `__style` coexist** — use Tailwind classes in templates, use `__style` for component-specific CSS
 
 ## Build
 

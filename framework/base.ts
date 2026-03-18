@@ -1,26 +1,26 @@
 // Base class for all uinspy components
 export abstract class BaseComponent extends HTMLElement {
-  protected root: ShadowRoot;
   protected el!: HTMLElement;
 
-  constructor() {
-    super();
-    this.root = this.attachShadow({ mode: "open" });
-  }
+  // Track which components already injected their styles
+  private static __injected = new Set<string>();
 
   connectedCallback() {
     const ctor = this.constructor as typeof BaseComponent & {
       __style?: string;
       __template?: () => HTMLElement;
     };
-    if (ctor.__style) {
+    // Inject component style once per tag
+    const tag = this.tagName.toLowerCase();
+    if (ctor.__style && !BaseComponent.__injected.has(tag)) {
+      BaseComponent.__injected.add(tag);
       const s = document.createElement("style");
       s.textContent = ctor.__style;
-      this.root.appendChild(s);
+      document.head.appendChild(s);
     }
     if (ctor.__template) {
       this.el = ctor.__template();
-      this.root.appendChild(this.el);
+      this.appendChild(this.el);
     }
     this.render();
   }
@@ -28,6 +28,6 @@ export abstract class BaseComponent extends HTMLElement {
   protected abstract render(): void;
 
   protected $<T extends HTMLElement>(selector: string): T {
-    return this.root.querySelector(selector) as T;
+    return this.querySelector(selector) as T;
   }
 }
