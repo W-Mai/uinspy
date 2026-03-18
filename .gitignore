@@ -5,3 +5,4 @@ generated
 *.local
 .DS_Store
 .idea
+static/
