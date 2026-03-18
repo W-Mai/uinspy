@@ -2,7 +2,6 @@ import { rm, mkdir } from "fs/promises";
 import { uiPlugin } from "./framework/plugin";
 
 const tmpDir = ".build_tmp";
-await rm(tmpDir, { recursive: true, force: true });
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist");
 
@@ -25,8 +24,8 @@ if (!min.success || !full.success) {
   process.exit(1);
 }
 
-const cssMin = await Bun.file("./src/app.min.css").text();
-const cssFull = await Bun.file("./src/app.out.css").text();
+const cssMin = await Bun.file("./generated/app.min.css").text();
+const cssFull = await Bun.file("./generated/app.css").text();
 const jsMin = await Bun.file(`${tmpDir}/min/app.js`).text();
 const jsFull = await Bun.file(`${tmpDir}/full/app.js`).text();
 const favicon = await Bun.file("./public/favicon.svg").text();
@@ -57,7 +56,8 @@ ${bodyContent.trim()}
 
 await Bun.write("dist/uinspy.html", buildHtml(jsFull, cssFull));
 await Bun.write("dist/uinspy.min.html", buildHtml(jsMin, cssMin));
-await rm(tmpDir, { recursive: true });
+await rm(`${tmpDir}/min`, { recursive: true, force: true });
+await rm(`${tmpDir}/full`, { recursive: true, force: true });
 
 const sizeF = (await Bun.file("dist/uinspy.html").text()).length;
 const sizeM = (await Bun.file("dist/uinspy.min.html").text()).length;

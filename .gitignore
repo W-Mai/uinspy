@@ -1,10 +1,7 @@
 node_modules
 dist
-*.local
+generated
 .build_tmp
+*.local
 .DS_Store
 .idea
-
-# Tailwind compiled output
-src/app.out.css
-src/app.min.css
