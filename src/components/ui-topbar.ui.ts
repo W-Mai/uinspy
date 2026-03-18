@@ -79,11 +79,12 @@ class UiTopbar extends BaseComponent {
         if (count === 0) return;
         const a = document.createElement("a");
         a.textContent = s.icon + " " + count;
+        const targetId = "sec-" + s.cls.replace("panel-", "");
+        a.href = "#" + targetId;
         a.title = s.title + " (" + count + ")";
-        a.style.cursor = "pointer";
         a.addEventListener("click", e => {
           e.preventDefault();
-          document.getElementById("sec-" + s.cls.replace("panel-", ""))
+          document.getElementById(targetId)
             ?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
         nav.appendChild(a);
