@@ -152,8 +152,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   });
 
   // Interaction state
-  const st = { rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, dragging: false as false | "rotate" | "pan", lastX: 0, lastY: 0, is3d: true, zoom: 1, panX: 0, panY: 0 };
-  let savedRotX = C.DEFAULT_ROT_X, savedRotY = C.DEFAULT_ROT_Y;
+  const st: { rotX: number; rotY: number; dragging: false | "rotate" | "pan"; lastX: number; lastY: number; is3d: boolean; zoom: number; panX: number; panY: number } = { rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, dragging: false, lastX: 0, lastY: 0, is3d: true, zoom: 1, panX: 0, panY: 0 };
+  let savedRotX = C.DEFAULT_ROT_X as number, savedRotY = C.DEFAULT_ROT_Y as number;
   let animId: number | null = null;
 
   function applyVis(spreadOv?: number) {
