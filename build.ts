@@ -5,7 +5,7 @@ const tmpDir = ".build_tmp";
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist");
 
-const buildOpts = (minify: boolean, outdir: string) => ({
+const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; identifiers: boolean }, outdir: string) => ({
   entrypoints: ["./src/app.ts"],
   outdir,
   target: "browser" as const,
@@ -16,7 +16,7 @@ const buildOpts = (minify: boolean, outdir: string) => ({
 // Build both minified and unminified versions
 const [min, full] = await Promise.all([
   Bun.build(buildOpts(true, `${tmpDir}/min`)),
-  Bun.build(buildOpts(false, `${tmpDir}/full`)),
+  Bun.build(buildOpts({ whitespace: false, syntax: true, identifiers: false }, `${tmpDir}/full`)),
 ]);
 
 if (!min.success || !full.success) {
