@@ -13,7 +13,6 @@ const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; ide
   plugins: [uiPlugin],
 });
 
-// Build both minified and unminified versions
 const [min, full] = await Promise.all([
   Bun.build(buildOpts(true, `${tmpDir}/min`)),
   Bun.build(buildOpts({ whitespace: false, syntax: true, identifiers: false }, `${tmpDir}/full`)),
@@ -24,30 +23,32 @@ if (!min.success || !full.success) {
   process.exit(1);
 }
 
+// Tailwind-compiled CSS (includes @apply resolution + theme vars)
 const twCssMin = await Bun.file("./generated/app.min.css").text();
 const twCssFull = await Bun.file("./generated/app.css").text();
 const jsMin = await Bun.file(`${tmpDir}/min/app.js`).text();
 const jsFull = await Bun.file(`${tmpDir}/full/app.js`).text();
 
-// Bun bundler outputs imported CSS alongside JS
-const bunCssMinFile = Bun.file(`${tmpDir}/min/app.css`);
-const bunCssFullFile = Bun.file(`${tmpDir}/full/app.css`);
-const bunCssMin = await bunCssMinFile.exists() ? await bunCssMinFile.text() : "";
-const bunCssFull = await bunCssFullFile.exists() ? await bunCssFullFile.text() : "";
+// Bun bundler may output additional CSS from JS imports
+const readCss = async (dir: string) => {
+  const f = Bun.file(`${dir}/app.css`);
+  return await f.exists() ? await f.text() : "";
+};
+const bunCssMin = await readCss(`${tmpDir}/min`);
+const bunCssFull = await readCss(`${tmpDir}/full`);
 
-const cssMin = twCssMin + "\n" + bunCssMin;
-const cssFull = twCssFull + "\n" + bunCssFull;
+const cssMin = twCssMin + (bunCssMin ? "\n" + bunCssMin : "");
+const cssFull = twCssFull + (bunCssFull ? "\n" + bunCssFull : "");
+
 const favicon = await Bun.file("./public/favicon.svg").text();
 const faviconB64 = Buffer.from(favicon).toString("base64");
 
-// Read index.html as template, extract body content
 const indexHtml = await Bun.file("./index.html").text();
 const bodyMatch = indexHtml.match(/<body[^>]*>([\s\S]*)<script\s+type="module"/);
 const bodyAttrs = indexHtml.match(/<body([^>]*)>/)?.[1] ?? "";
 const bodyContent = bodyMatch?.[1] ?? "";
 
-function buildHtml(js: string, css: string) {
-  return `<!doctype html>
+const buildHtml = (js: string, css: string) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -61,12 +62,12 @@ ${bodyContent.trim()}
 <script>${js}</script>
 </body>
 </html>`;
-}
 
-await Bun.write("dist/uinspy.html", buildHtml(jsFull, cssFull));
-await Bun.write("dist/uinspy.min.html", buildHtml(jsMin, cssMin));
-await rm(`${tmpDir}/min`, { recursive: true, force: true });
-await rm(`${tmpDir}/full`, { recursive: true, force: true });
+await Promise.all([
+  Bun.write("dist/uinspy.html", buildHtml(jsFull, cssFull)),
+  Bun.write("dist/uinspy.min.html", buildHtml(jsMin, cssMin)),
+]);
+await rm(tmpDir, { recursive: true, force: true });
 
 const sizeF = (await Bun.file("dist/uinspy.html").text()).length;
 const sizeM = (await Bun.file("dist/uinspy.min.html").text()).length;

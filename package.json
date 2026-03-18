@@ -4,9 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tailwindcss -i ./src/app.css -o ./generated/app.css && (bun run css:dev & bun ./index.html)",
+    "dev": "tailwindcss -i ./src/app.css -o ./generated/app.css && (tailwindcss -i ./src/app.css -o ./generated/app.css --watch & bun ./index.html)",
     "build": "bun run css:build && bun run build.ts",
-    "css:dev": "tailwindcss -i ./src/app.css -o ./generated/app.css --watch",
     "css:build": "tailwindcss -i ./src/app.css -o ./generated/app.css && tailwindcss -i ./src/app.css -o ./generated/app.min.css --minify"
   },
   "devDependencies": {

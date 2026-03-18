@@ -1,5 +1,5 @@
 // Global reactive state for cross-component communication
-import { store, signal } from "../framework";
+import { signal } from "../framework";
 import type { DashboardData, ObjNode } from "./types";
 
 // Highlight system

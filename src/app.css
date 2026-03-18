@@ -1,8 +1,153 @@
 @import "tailwindcss";
+@import "./dashboard.css";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
+/* ── Theme variable bridge: map CSS vars → Tailwind tokens ── */
 @theme {
-  --color-accent: #7c3aed;
-  --color-accent-light: #a78bfa;
+  --color-crust: var(--crust);
+  --color-mantle: var(--mantle);
+  --color-base: var(--base);
+  --color-surface0: var(--surface0);
+  --color-surface1: var(--surface1);
+  --color-surface2: var(--surface2);
+  --color-overlay0: var(--overlay0);
+  --color-overlay1: var(--overlay1);
+  --color-txt: var(--text);
+  --color-subtext0: var(--subtext0);
+  --color-subtext1: var(--subtext1);
+  --color-blue: var(--blue);
+  --color-sapphire: var(--sapphire);
+  --color-lavender: var(--lavender);
+  --color-green: var(--green);
+  --color-yellow: var(--yellow);
+  --color-peach: var(--peach);
+  --color-red: var(--red);
+  --color-mauve: var(--mauve);
+  --color-pink: var(--pink);
+  --color-teal: var(--teal);
+  --color-flamingo: var(--flamingo);
+
+  --color-panel-bg: var(--panel-bg);
+  --color-panel-border: var(--panel-border);
+  --color-topbar-bg: var(--topbar-bg);
+  --color-panel-header-bg: var(--panel-header-bg);
+  --color-hover-row: var(--hover-row);
+  --color-hover-summary: var(--hover-summary);
+  --color-td-border: var(--td-border);
+  --color-glow-blue: var(--glow-blue);
+  --color-nav-active-bg: var(--nav-active-bg);
+  --color-version-bg: var(--version-bg);
+  --color-icon-bg-blue: var(--icon-bg-blue);
+  --color-icon-bg-green: var(--icon-bg-green);
+  --color-icon-bg-mauve: var(--icon-bg-mauve);
+  --color-icon-bg-peach: var(--icon-bg-peach);
+  --color-icon-bg-teal: var(--icon-bg-teal);
+  --color-icon-bg-pink: var(--icon-bg-pink);
+
+  --radius-panel: var(--radius);
+  --radius-sm: var(--radius-sm);
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Dark theme (Catppuccin Mocha) — default ── */
+:root {
+  --crust: #11111b; --mantle: #181825; --base: #1e1e2e;
+  --surface0: #313244; --surface1: #45475a; --surface2: #585b70;
+  --overlay0: #6c7086; --overlay1: #7f849c;
+  --text: #cdd6f4; --subtext0: #a6adc8; --subtext1: #bac2de;
+  --blue: #89b4fa; --sapphire: #74c7ec; --lavender: #b4befe;
+  --green: #a6e3a1; --yellow: #f9e2af; --peach: #fab387;
+  --red: #f38ba8; --mauve: #cba6f7; --pink: #f5c2e7;
+  --teal: #94e2d5; --flamingo: #f2cdcd;
+  --radius: 12px; --radius-sm: 8px; --gap: 8px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --panel-bg: #1e1e2eb3; --panel-border: #31324499;
+  --glow-blue: #89b4fa14; --topbar-bg: #11111bd9;
+  --panel-header-bg: #18182580;
+  --hover-row: #89b4fa0a; --hover-summary: #89b4fa0f;
+  --td-border: #3132444d; --shadow-hover: 0 4px 24px #0003;
+  --icon-bg-blue: #89b4fa1f; --icon-bg-green: #a6e3a11f;
+  --icon-bg-mauve: #cba6f71f; --icon-bg-peach: #fab3871f;
+  --icon-bg-teal: #94e2d51f; --icon-bg-pink: #f5c2e71f;
+  --version-bg: #a6e3a11f; --nav-active-bg: #89b4fa1f;
+  --search-icon-fill: %236c7086;
+  --panel-glow: none; --panel-hover-glow: none;
+  --panel-header-gradient: none;
+  --title-text-shadow: none; --title-letter-spacing: 0.5px;
+  --badge-border: none; --badge-text-shadow: none;
+  --topbar-shadow: none; --brand-text-shadow: none;
+  --brand-logo-shadow: none; --stat-value-shadow: none;
+  --stat-label-color: var(--overlay1); --stat-label-spacing: 0.3px;
+  --th-text-shadow: none;
+  --scene-layer-bg: #89b4fa0f; --scene-layer-hover-bg: #89b4fa33;
+  --scene-layer-hover-shadow: 0 0 8px #89b4fa66;
+  --scrollbar-thumb: var(--surface1); --scrollbar-track: transparent;
+  --body-after-content: none; --body-after-bg: none;
+  --version-border: none; --version-text-shadow: none;
+}
+
+/* ── Light theme (Catppuccin Latte) ── */
+[data-theme="light"] {
+  --crust: #dce0e8; --mantle: #e6e9ef; --base: #eff1f5;
+  --surface0: #ccd0da; --surface1: #bcc0cc; --surface2: #acb0be;
+  --overlay0: #9ca0b0; --overlay1: #8c8fa1;
+  --text: #4c4f69; --subtext0: #6c6f85; --subtext1: #5c5f77;
+  --blue: #1e66f5; --sapphire: #209fb5; --lavender: #7287fd;
+  --green: #40a02b; --yellow: #df8e1d; --peach: #fe640b;
+  --red: #d20f39; --mauve: #8839ef; --pink: #ea76cb;
+  --teal: #179299; --flamingo: #dd7878;
+  --panel-bg: #eff1f5d9; --panel-border: #ccd0dab3;
+  --glow-blue: #1e66f50f; --topbar-bg: #e6e9efe6;
+  --panel-header-bg: #dce0e899;
+  --hover-row: #1e66f50a; --hover-summary: #1e66f50f;
+  --td-border: #ccd0da80; --shadow-hover: 0 4px 24px #0000000f;
+  --icon-bg-blue: #1e66f51a; --icon-bg-green: #40a02b1a;
+  --icon-bg-mauve: #8839ef1a; --icon-bg-peach: #fe640b1a;
+  --icon-bg-teal: #1792991a; --icon-bg-pink: #ea76cb1a;
+  --version-bg: #40a02b1a; --nav-active-bg: #1e66f51a;
+  --search-icon-fill: %239ca0b0;
+  --scene-layer-bg: #1e66f50f; --scene-layer-hover-bg: #1e66f533;
+  --scene-layer-hover-shadow: 0 0 8px #1e66f566;
+}
+
+/* ── Cyber theme (Neon) ── */
+[data-theme="cyber"] {
+  --crust: #05080a; --mantle: #0a0e14; --base: #0d1117;
+  --surface0: #1a1f2e; --surface1: #252b3b; --surface2: #2f3649;
+  --overlay0: #4a5568; --overlay1: #718096;
+  --text: #e0f0ff; --subtext0: #8ba4c0; --subtext1: #a0c4e8;
+  --blue: #00e5ff; --sapphire: #00bcd4; --lavender: #b388ff;
+  --green: #00ff9f; --yellow: #ffea00; --peach: #ff6e40;
+  --red: #ff1744; --mauve: #e040fb; --pink: #ff4081;
+  --teal: #1de9b6; --flamingo: #ff80ab;
+  --radius: 4px; --radius-sm: 2px;
+  --panel-bg: #0d1117d9; --panel-border: #00e5ff26;
+  --glow-blue: #00e5ff0f; --topbar-bg: #05080aeb;
+  --panel-header-bg: #0a0e14b3;
+  --hover-row: #00e5ff0f; --hover-summary: #00e5ff14;
+  --td-border: #00e5ff14; --shadow-hover: 0 0 20px #00e5ff1f, 0 0 40px #00e5ff0a;
+  --icon-bg-blue: #00e5ff1a; --icon-bg-green: #00ff9f1a;
+  --icon-bg-mauve: #e040fb1a; --icon-bg-peach: #ff6e401a;
+  --icon-bg-teal: #1de9b61a; --icon-bg-pink: #ff40811a;
+  --version-bg: #00ff9f1a; --nav-active-bg: #00e5ff1f;
+  --search-icon-fill: %234a5568;
+  --panel-glow: inset 0 0 30px #00e5ff05;
+  --panel-hover-glow: inset 0 0 30px #00e5ff08;
+  --panel-header-gradient: linear-gradient(90deg, #00e5ff0d 0%, transparent 100%);
+  --title-text-shadow: 0 0 6px #00e5ff4d;
+  --title-letter-spacing: 1.5px;
+  --badge-border: 1px solid currentColor;
+  --badge-text-shadow: 0 0 4px currentColor;
+  --topbar-shadow: 0 1px 12px #00e5ff14;
+  --brand-text-shadow: 0 0 8px #00e5ff66;
+  --brand-logo-shadow: 0 0 10px #00e5ff80;
+  --stat-value-shadow: 0 0 8px #00e5ff4d;
+  --stat-label-color: #00e5ff80; --stat-label-spacing: 1px;
+  --th-text-shadow: 0 0 4px #00e5ff33;
+  --scene-layer-bg: #00e5ff0a; --scene-layer-hover-bg: #00e5ff26;
+  --scene-layer-hover-shadow: 0 0 12px #00e5ff66;
+  --scrollbar-thumb: #00e5ff33; --scrollbar-track: #00e5ff05;
+  --body-after-content: ""; --body-after-bg: repeating-linear-gradient(0deg, transparent, transparent 2px, #00e5ff04 2px, #00e5ff04 4px);
+  --version-border: 1px solid #00ff9f4d;
+  --version-text-shadow: 0 0 4px #00ff9f4d;
 }
