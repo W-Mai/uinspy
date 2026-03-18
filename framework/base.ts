@@ -27,6 +27,17 @@ export abstract class BaseComponent extends HTMLElement {
 
   protected abstract render(): void;
 
+  // Re-render: clear children, re-mount template, re-run bindings
+  update() {
+    this.innerHTML = "";
+    const ctor = this.constructor as typeof BaseComponent & { __template?: () => HTMLElement };
+    if (ctor.__template) {
+      this.el = ctor.__template();
+      this.appendChild(this.el);
+    }
+    this.render();
+  }
+
   protected $<T extends HTMLElement>(selector: string): T {
     return this.querySelector(selector) as T;
   }
