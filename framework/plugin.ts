@@ -3,6 +3,9 @@ import { resolve, relative, dirname } from "path";
 
 const frameworkDir = resolve(import.meta.dir);
 
+// Collected scoped CSS from components for Tailwind processing
+export const collectedCSS: string[] = [];
+
 // Prefix CSS selectors with component tag name for scoping
 function scopeCSS(css: string, tag: string): string {
   return processBlock(css, tag);
@@ -14,6 +17,15 @@ function processBlock(css: string, tag: string): string {
   while (i < css.length) {
     // Skip whitespace
     if (/\s/.test(css[i])) { result += css[i]; i++; continue; }
+
+    // Skip comments
+    if (css[i] === "/" && css[i + 1] === "*") {
+      const end = css.indexOf("*/", i + 2);
+      const commentEnd = end === -1 ? css.length : end + 2;
+      result += css.slice(i, commentEnd);
+      i = commentEnd;
+      continue;
+    }
 
     // At-rules
     if (css[i] === "@") {
@@ -327,7 +339,9 @@ export const uiPlugin: BunPlugin = {
           `(class\\s+${className}[\\s\\S]*?static\\s+__style\\s*=\\s*)css\`([\\s\\S]*?)\``,
         );
         code = code.replace(styleRe, (_, prefix, cssContent) => {
-          return `${prefix}\`${scopeCSS(cssContent, tagName)}\``;
+          // Collect scoped CSS for Tailwind processing, emit empty __style
+          collectedCSS.push(scopeCSS(cssContent, tagName));
+          return `${prefix}\`\``;
         });
       }
       code = code.replace(/\bcss`/g, "`");

@@ -1,5 +1,7 @@
 import { rm, mkdir } from "fs/promises";
-import { uiPlugin } from "./framework/plugin";
+import { uiPlugin, collectedCSS } from "./framework/plugin";
+import { compile } from "@tailwindcss/node";
+import { optimize } from "@tailwindcss/node";
 
 const tmpDir = ".build_tmp";
 await rm("dist", { recursive: true, force: true });
@@ -13,6 +15,9 @@ const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; ide
   plugins: [uiPlugin],
 });
 
+// Clear collected CSS from previous runs
+collectedCSS.length = 0;
+
 const [min, full] = await Promise.all([
   Bun.build(buildOpts(true, `${tmpDir}/min`)),
   Bun.build(buildOpts({ whitespace: false, syntax: true, identifiers: false }, `${tmpDir}/full`)),
@@ -23,22 +28,20 @@ if (!min.success || !full.success) {
   process.exit(1);
 }
 
-// Tailwind-compiled CSS (includes @apply resolution + theme vars)
-const twCssMin = await Bun.file("./generated/app.min.css").text();
-const twCssFull = await Bun.file("./generated/app.css").text();
+// Combine app.css + all component scoped CSS, process through Tailwind
+const appCss = await Bun.file("./src/app.css").text();
+const componentCss = [...new Set(collectedCSS)].join("\n");
+const fullCssInput = appCss + "\n" + componentCss;
+
+const compiler = await compile(fullCssInput, {
+  base: process.cwd() + "/src",
+  onDependency() {},
+});
+const cssFull = compiler.build([]);
+const cssMin = optimize(cssFull, { minify: true }).code;
+
 const jsMin = await Bun.file(`${tmpDir}/min/app.js`).text();
 const jsFull = await Bun.file(`${tmpDir}/full/app.js`).text();
-
-// Bun bundler may output additional CSS from JS imports
-const readCss = async (dir: string) => {
-  const f = Bun.file(`${dir}/app.css`);
-  return await f.exists() ? await f.text() : "";
-};
-const bunCssMin = await readCss(`${tmpDir}/min`);
-const bunCssFull = await readCss(`${tmpDir}/full`);
-
-const cssMin = twCssMin + (bunCssMin ? "\n" + bunCssMin : "");
-const cssFull = twCssFull + (bunCssFull ? "\n" + bunCssFull : "");
 
 const favicon = await Bun.file("./public/favicon.svg").text();
 const faviconB64 = Buffer.from(favicon).toString("base64");

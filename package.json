@@ -4,12 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tailwindcss -i ./src/app.css -o ./generated/app.css && (tailwindcss -i ./src/app.css -o ./generated/app.css --watch & bun ./index.html)",
-    "build": "bun run css:build && bun run build.ts",
-    "css:build": "tailwindcss -i ./src/app.css -o ./generated/app.css && tailwindcss -i ./src/app.css -o ./generated/app.min.css --minify"
+    "dev": "bun ./index.html",
+    "build": "bun run build.ts"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.2.1",
+    "@tailwindcss/node": "^4.2.1",
     "@types/bun": "latest",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3"
