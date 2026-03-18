@@ -1,0 +1,9 @@
+node_modules
+dist
+*.local
+.build_tmp
+.DS_Store
+
+# Tailwind compiled output
+src/app.out.css
+src/app.min.css

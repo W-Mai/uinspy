@@ -1,0 +1,18 @@
+{
+  "name": "uinspy",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run css:dev & bun ./index.html",
+    "build": "bun run css:build && bun run build.ts",
+    "css:dev": "tailwindcss -i ./src/app.css -o ./src/app.out.css --watch",
+    "css:build": "tailwindcss -i ./src/app.css -o ./src/app.out.css && tailwindcss -i ./src/app.css -o ./src/app.min.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
+    "@types/bun": "latest",
+    "tailwindcss": "^4.2.1",
+    "typescript": "~5.9.3"
+  }
+}
