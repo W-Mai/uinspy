@@ -279,6 +279,28 @@ function transformInlineTemplates(code: string): string {
   return result;
 }
 
+// Compile standalone html`...` → IIFE (runs after this.html and static __template transforms)
+function transformStandaloneTemplates(code: string): string {
+  const marker = "html`";
+  let result = "";
+  let i = 0;
+  while (i < code.length) {
+    const idx = code.indexOf(marker, i);
+    if (idx === -1) { result += code.slice(i); break; }
+    // Skip if preceded by word char (e.g. innerHTML`)
+    if (idx > 0 && /\w/.test(code[idx - 1])) { result += code.slice(i, idx + marker.length); i = idx + marker.length; continue; }
+    result += code.slice(i, idx);
+    const tpl = extractTemplate(code, idx, marker);
+    if (!tpl) { result += marker; i = idx + marker.length; continue; }
+    const compiled = compileTemplate(tpl.inner);
+    result += compiled
+      ? `(() => { ${compiled} })()`
+      : `(() => { const _t = document.createElement("template"); _t.innerHTML = \`${tpl.inner}\`; return _t.content.firstElementChild; })()`;
+    i = tpl.end;
+  }
+  return result;
+}
+
 // --- Plugin ---
 
 export const uiPlugin: BunPlugin = {
@@ -313,6 +335,7 @@ export const uiPlugin: BunPlugin = {
       // Compile templates (static + inline)
       code = transformStaticTemplates(code);
       code = transformInlineTemplates(code);
+      code = transformStandaloneTemplates(code);
 
       // render() → protected render()
       code = code.replace(/^(\s+)render\(\)/gm, "$1protected render()");
@@ -326,7 +349,10 @@ export const uiPlugin: BunPlugin = {
       code = code.replace(/import\s*\{[^}]*signal[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
       code = code.replace(/import\s*\{[^}]*store[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
 
-      const imports = [`import { BaseComponent } from "${rel}/base";`];
+      const imports: string[] = [];
+      if (code.includes("BaseComponent")) {
+        imports.push(`import { BaseComponent } from "${rel}/base";`);
+      }
       if (code.includes("signal(")) {
         imports.push(`import { signal } from "${rel}/signal";`);
       }

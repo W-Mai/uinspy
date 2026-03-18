@@ -1,8 +1,8 @@
 // Display & Objects mega-panel with tab bar, tree, 3D scene, detail
 import { el, makePanel, badge } from "../helpers";
 import { countObjects, objDataMap, selectedAddr } from "../state";
-import { renderObjTree, renderObjDetail } from "./obj-tree";
-import { build3DScene } from "./scene-3d";
+import { renderObjTree, renderObjDetail } from "./obj-tree.ui";
+import { build3DScene } from "./scene-3d.ui";
 import type { DashboardData, ObjNode } from "../types";
 
 export function buildDisplayAndTrees(data: DashboardData) {
@@ -34,41 +34,39 @@ export function buildDisplayAndTrees(data: DashboardData) {
   function showDisplay(idx: number) {
     tabBtns.forEach((b, j) => b.classList.toggle("active", j === idx));
     contentArea.innerHTML = "";
-    // Clear obj data map for new display
     Object.keys(objDataMap).forEach(k => delete objDataMap[k]);
 
     const entry = entries[idx];
     const d = entry.disp;
 
     // Info chips
-    const infoBar = el("div", "disp-info-bar");
-    const chip = el("div", "disp-chip");
-    chip.appendChild(el("span", "disp-addr", d.addr || ""));
-    chip.appendChild(el("span", "disp-res", d.hor_res + " × " + d.ver_res));
-    chip.appendChild(el("span", "disp-screens", d.screen_count + " screens"));
+    const chip = html`<div class="disp-chip">
+      <span class="disp-addr">${d.addr || ""}</span>
+      <span class="disp-res">${d.hor_res + " × " + d.ver_res}</span>
+      <span class="disp-screens">${d.screen_count + " screens"}</span>
+    </div>`;
     [d.buf_1, d.buf_2].forEach((b, i) => {
       if (!b) return;
       chip.appendChild(badge("buf " + (i + 1) + " " + b.width + "×" + b.height + " " + b.color_format, "blue"));
     });
+    const infoBar = el("div", "disp-info-bar");
     infoBar.appendChild(chip);
     contentArea.appendChild(infoBar);
 
     // Three-column split
-    const split = el("div", "obj-split");
-
     const treeView = el("div", "obj-tree-view");
     treeView.appendChild(el("div", "obj-tree-header", "🌳 " + entry.dispObjs[d.addr].length + " objects"));
     entry.tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
-    split.appendChild(treeView);
 
     const view3d = el("div", "obj-3d-view");
     build3DScene(view3d, [entry.tree], [d], entry.dispObjs);
-    split.appendChild(view3d);
 
-    detailPanel = el("div", "obj-detail-view");
-    detailPanel.appendChild(el("p", "empty", "Select an object to inspect."));
-    split.appendChild(detailPanel);
+    detailPanel = html`<div class="obj-detail-view">
+      <p class="empty">Select an object to inspect.</p>
+    </div>`;
 
+    const split = html`<div class="obj-split"></div>`;
+    split.append(treeView, view3d, detailPanel);
     contentArea.appendChild(split);
   }
 

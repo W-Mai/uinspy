@@ -2,8 +2,8 @@
 import { dashData, countObjects } from "../state";
 import { STAT_DEFS } from "../constants";
 import { makeStatPanel, el } from "../helpers";
-import { buildDisplayAndTrees } from "../builders/display";
-import { buildAnimations, buildTimers, buildIndevs, buildImageCache, buildSubjects, buildGroups, buildDrawTasks, buildDrawUnits, buildDecoders, buildFsDrivers, buildSimpleTable } from "../builders/sections";
+import { buildDisplayAndTrees } from "../builders/display.ui";
+import { buildAnimations, buildTimers, buildIndevs, buildImageCache, buildSubjects, buildGroups, buildDrawTasks, buildDrawUnits, buildDecoders, buildFsDrivers, buildSimpleTable } from "../builders/sections.ui";
 import type { DashboardData } from "../types";
 
 class UiDashboard extends BaseComponent {

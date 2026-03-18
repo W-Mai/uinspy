@@ -30,26 +30,27 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
   const obj = objDataMap[addr];
   if (!obj) { panel.appendChild(el("p", "empty", "Select an object to inspect.")); return; }
 
-  const hdr = el("div", "detail-header");
-  hdr.appendChild(el("span", "detail-class", obj.class_name || "obj"));
-  hdr.appendChild(el("span", "mono-addr", obj.addr));
+  // Header
+  const hdr = html`<div class="detail-header">
+    <span class="detail-class">${obj.class_name || "obj"}</span>
+    <span class="mono-addr">${obj.addr}</span>
+  </div>`;
   panel.appendChild(hdr);
 
   // Coordinates
   const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
-  const coordSec = el("div", "detail-section");
-  coordSec.appendChild(el("div", "detail-section-title", "Coordinates"));
-  const coordGrid = el("div", "detail-coord-grid");
-  (["x1", "y1", "x2", "y2"] as const).forEach(k => {
-    coordGrid.appendChild(el("span", "detail-coord-label", k));
-    coordGrid.appendChild(el("span", "detail-coord-val", String(c[k] || 0)));
-  });
   const w = (c.x2 || 0) - (c.x1 || 0), h = (c.y2 || 0) - (c.y1 || 0);
-  coordGrid.appendChild(el("span", "detail-coord-label", "w"));
-  coordGrid.appendChild(el("span", "detail-coord-val", String(w)));
-  coordGrid.appendChild(el("span", "detail-coord-label", "h"));
-  coordGrid.appendChild(el("span", "detail-coord-val", String(h)));
-  coordSec.appendChild(coordGrid);
+  const coordSec = html`<div class="detail-section">
+    <div class="detail-section-title">Coordinates</div>
+    <div class="detail-coord-grid">
+      <span class="detail-coord-label">x1</span><span class="detail-coord-val">${String(c.x1 || 0)}</span>
+      <span class="detail-coord-label">y1</span><span class="detail-coord-val">${String(c.y1 || 0)}</span>
+      <span class="detail-coord-label">x2</span><span class="detail-coord-val">${String(c.x2 || 0)}</span>
+      <span class="detail-coord-label">y2</span><span class="detail-coord-val">${String(c.y2 || 0)}</span>
+      <span class="detail-coord-label">w</span><span class="detail-coord-val">${String(w)}</span>
+      <span class="detail-coord-label">h</span><span class="detail-coord-val">${String(h)}</span>
+    </div>
+  </div>`;
   panel.appendChild(coordSec);
 
   // References
