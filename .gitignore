@@ -7,3 +7,4 @@ dist
 # Tailwind compiled output
 src/app.out.css
 src/app.min.css
+.idea

@@ -1,14 +1,23 @@
 import { rm, mkdir } from "fs/promises";
+import { uiPlugin } from "./src/plugin";
 
 const tmpDir = ".build_tmp";
 await rm(tmpDir, { recursive: true, force: true });
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist");
 
+const buildOpts = (minify: boolean, outdir: string) => ({
+  entrypoints: ["./src/app.ts"],
+  outdir,
+  target: "browser" as const,
+  minify,
+  plugins: [uiPlugin],
+});
+
 // Build both minified and unminified versions
 const [min, full] = await Promise.all([
-  Bun.build({ entrypoints: ["./src/app.ts"], outdir: `${tmpDir}/min`, target: "browser", minify: true }),
-  Bun.build({ entrypoints: ["./src/app.ts"], outdir: `${tmpDir}/full`, target: "browser", minify: false }),
+  Bun.build(buildOpts(true, `${tmpDir}/min`)),
+  Bun.build(buildOpts(false, `${tmpDir}/full`)),
 ]);
 
 if (!min.success || !full.success) {

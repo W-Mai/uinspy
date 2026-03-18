@@ -1,2 +1,2 @@
-import "./components/ui-counter";
-import "./components/ui-tree";
+import "./components/ui-counter.ui";
+import "./components/ui-tree.ui";

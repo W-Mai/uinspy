@@ -8,12 +8,19 @@ export abstract class BaseComponent extends HTMLElement {
   }
 
   connectedCallback() {
+    // Auto-inject style from @style decorator
+    const ctor = this.constructor as typeof BaseComponent & { __style?: string };
+    if (ctor.__style) {
+      const style = document.createElement("style");
+      style.textContent = ctor.__style;
+      this.root.appendChild(style);
+    }
     this.render();
   }
 
   protected abstract render(): void;
 
-  // Helper: create element with attributes and children
+  // Create element with attributes and children
   protected h<K extends keyof HTMLElementTagNameMap>(
     tag: K,
     attrs?: Record<string, string>,
@@ -26,4 +33,9 @@ export abstract class BaseComponent extends HTMLElement {
     );
     return el;
   }
+}
+
+// Type hint for css tagged template (IDE syntax highlighting)
+declare global {
+  function css(strings: TemplateStringsArray, ...values: unknown[]): string;
 }
