@@ -34,8 +34,3 @@ export abstract class BaseComponent extends HTMLElement {
     return el;
   }
 }
-
-// Type hint for css tagged template (IDE syntax highlighting)
-declare global {
-  function css(strings: TemplateStringsArray, ...values: unknown[]): string;
-}

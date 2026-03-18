@@ -3,10 +3,19 @@ import type { BunPlugin } from "bun";
 /**
  * Bun plugin that transforms .ui.ts component files.
  *
- * Syntax sugar:
- *   1. `@tag("my-tag")` → auto customElements.define at end of file
- *   2. `@style(css\`...\`)` → static __style property on class
- *   3. `css\`...\`` → plain template string (enables IDE CSS highlighting)
+ * Source syntax (IDE-friendly, no imports needed):
+ *   //@ component("my-tag")
+ *   class MyComp extends BaseComponent {
+ *     static __style = css`...`;
+ *     render() { return el; }
+ *   }
+ *
+ * Transforms:
+ *   1. Auto-inject imports (BaseComponent, signal)
+ *   2. //@ component("tag") → customElements.define()
+ *   3. css`...` → plain template string
+ *   4. render() return → this.root.append()
+ *   5. render() → protected render()
  */
 export const uiPlugin: BunPlugin = {
   name: "uinspy-ui",
@@ -15,32 +24,43 @@ export const uiPlugin: BunPlugin = {
       const original = await Bun.file(args.path).text();
       let code = original;
 
-      // Collect @tag mappings before removing decorators
+      // 1. Collect //@ component("tag") → class name mappings
       const defines: string[] = [];
-      const tagRe = /@tag\(["']([^"']+)["']\)\s*/g;
-      // Find class name that follows @tag (possibly with @style in between)
-      const tagClassRe = /@tag\(["']([^"']+)["']\)[\s\S]*?(?:export\s+)?class\s+(\w+)/g;
+      const compRe = /\/\/@\s*component\(["']([^"']+)["']\)[\s\S]*?class\s+(\w+)/g;
       let m: RegExpExecArray | null;
-      while ((m = tagClassRe.exec(original)) !== null) {
+      while ((m = compRe.exec(original)) !== null) {
         defines.push(`customElements.define("${m[1]}", ${m[2]});`);
       }
+      // Remove //@ component(...) lines
+      code = code.replace(/\/\/@\s*component\(["'][^"']+["']\)\s*\n/g, "");
 
-      // Remove @tag(...) decorators
-      code = code.replace(tagRe, "");
-
-      // Transform @style(css`...`) → static __style after class closing brace
-      // Match @style(css`...`) followed by class declaration
-      code = code.replace(
-        /@style\(css(`[^`]*`)\)\s*((?:export\s+)?class\s+(\w+)[^{]*\{)/g,
-        (_match, cssContent, classDecl, className) => {
-          return `${classDecl}\n  static __style = ${cssContent};`;
-        }
-      );
-
-      // css`` tagged template → plain template string
+      // 2. css`` → plain template string
       code = code.replace(/\bcss`/g, "`");
 
-      // Append customElements.define calls
+      // 3. render() return → this.root.append()
+      code = code.replace(
+        /\breturn\s+([^;]+);\s*\n(\s*)\}/g,
+        "this.root.append($1);\n$2}"
+      );
+
+      // 4. Make render() protected
+      code = code.replace(/^(\s+)render\(\)/gm, "$1protected render()");
+
+      // 5. Auto-inject imports (replace any existing ones)
+      const inComponents = args.path.includes("/components/");
+      const basePath = inComponents ? "./base" : "./components/base";
+      const signalPath = inComponents ? "../signal" : "./signal";
+
+      code = code.replace(/import\s*\{[^}]*BaseComponent[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
+      code = code.replace(/import\s*\{[^}]*signal[^}]*\}\s*from\s*["'][^"']+["'];?\s*\n?/g, "");
+
+      const imports = [`import { BaseComponent } from "${basePath}";`];
+      if (code.includes("signal(")) {
+        imports.push(`import { signal } from "${signalPath}";`);
+      }
+      code = imports.join("\n") + "\n" + code;
+
+      // 6. Append customElements.define
       if (defines.length) {
         code += "\n" + defines.join("\n") + "\n";
       }
