@@ -4,6 +4,9 @@
 /** Tagged template for CSS strings. Enables IDE CSS highlighting */
 declare function css(strings: TemplateStringsArray, ...values: unknown[]): string;
 
+/** Tagged template for HTML strings. Compiled to DOM operations at build time */
+declare function html(strings: TemplateStringsArray, ...values: unknown[]): Node;
+
 /** Reactive signal. Auto-imported in .ui.ts files */
 declare function signal<T>(initial: T): import("./signal").Signal<T>;
 

@@ -14,8 +14,7 @@ class UiTree extends BaseComponent {
       .empty { color: #6b7280; border-color: #374151; }
     }
   `;
+  static __template = html`<div class="empty">No UI data loaded. Pass JSON to inspect.</div>`;
 
-  render() {
-    this.root.append(this.html`<div class="empty">No UI data loaded. Pass JSON to inspect.</div>`);
-  }
+  render() {}
 }

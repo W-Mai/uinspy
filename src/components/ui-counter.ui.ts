@@ -14,13 +14,12 @@ class UiCounter extends BaseComponent {
     }
     button:hover { border-color: rgba(124, 58, 237, 0.5); }
   `;
+  static __template = html`<button>Count is 0</button>`;
 
   private count = signal(0);
 
   render() {
-    this.root.append(this.html`<button>Count is ${this.count.val}</button>`);
-    const btn = this.$<HTMLButtonElement>("button");
-    btn.onclick = () => this.count.val++;
-    this.count.sub(() => (btn.textContent = `Count is ${this.count.val}`));
+    this.el.onclick = () => this.count.val++;
+    this.count.sub(() => (this.el.textContent = `Count is ${this.count.val}`));
   }
 }
