@@ -41,23 +41,23 @@ bun run build     # Production build → dist/
 
 ## Build Pipeline
 
-```
-src/*.ts ──→ Bun.build (uiPlugin) ──→ JS bundle
-                  │
-                  ├─ html`` → compiled DOM calls
-                  ├─ css``  → scopeCSS → collected
-                  └─ //@ component() → customElements.define
+```mermaid
+graph LR
+  subgraph "Bun.build (uiPlugin)"
+    A["src/*.ts"] --> B["html`` → DOM calls"]
+    A --> C["css`` → scopeCSS → collected"]
+    A --> D["//@ component() → define"]
+  end
 
-src/app.css ─┐
-collected CSS ┘──→ @tailwindcss/node compile() ──→ CSS bundle
-                        │
-                        ├─ @theme tokens resolved
-                        ├─ @apply expanded
-                        └─ @utility expanded
+  B & D --> JS["JS bundle"]
+  E["src/app.css"] --> TW
+  C --> TW["@tailwindcss/node<br/>compile()"]
+  TW --> CSS["CSS bundle<br/>@theme + @apply + @utility"]
 
-JS + CSS ──→ inline into single HTML file
+  JS & CSS --> HTML["dist/uinspy.html<br/>single file ~70KB"]
 ```
 
 ## License
 
-MIT
+[MIT](LICENSE)
+
