@@ -43,8 +43,7 @@
   --color-icon-bg-teal: var(--icon-bg-teal);
   --color-icon-bg-pink: var(--icon-bg-pink);
 
-  --radius-panel: var(--radius);
-  --radius-sm: var(--radius-sm);
+  --radius-panel: var(--ui-radius);
 
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
@@ -59,7 +58,7 @@
   --green: #a6e3a1; --yellow: #f9e2af; --peach: #fab387;
   --red: #f38ba8; --mauve: #cba6f7; --pink: #f5c2e7;
   --teal: #94e2d5; --flamingo: #f2cdcd;
-  --radius: 12px; --radius-sm: 8px; --gap: 8px;
+  --ui-radius: 12px; --ui-radius-sm: 8px; --gap: 8px;
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --panel-bg: #1e1e2eb3; --panel-border: #31324499;
   --glow-blue: #89b4fa14; --topbar-bg: #11111bd9;
@@ -120,7 +119,7 @@
   --green: #00ff9f; --yellow: #ffea00; --peach: #ff6e40;
   --red: #ff1744; --mauve: #e040fb; --pink: #ff4081;
   --teal: #1de9b6; --flamingo: #ff80ab;
-  --radius: 4px; --radius-sm: 2px;
+  --ui-radius: 4px; --ui-radius-sm: 2px;
   --panel-bg: #0d1117d9; --panel-border: #00e5ff26;
   --glow-blue: #00e5ff0f; --topbar-bg: #05080aeb;
   --panel-header-bg: #0a0e14b3;

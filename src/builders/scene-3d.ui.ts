@@ -27,11 +27,11 @@ const __css = css`
   }
   .scene-3d { @apply absolute; transform-style: preserve-3d; top: 50%; left: 50%; }
   .scene-layer {
-    @apply absolute rounded-sm cursor-pointer;
+    @apply absolute rounded-[2px] cursor-pointer;
     background: var(--scene-layer-bg); border: 1.5px solid;
     transition: background .15s, box-shadow .15s;
   }
-  .scene-buf-layer { @apply absolute overflow-hidden pointer-events-none rounded-sm; box-shadow: 0 0 0 1px var(--surface1); }
+  .scene-buf-layer { @apply absolute overflow-hidden pointer-events-none rounded-[2px]; box-shadow: 0 0 0 1px var(--surface1); }
   .scene-buf-layer img { @apply block img-pixel; }
   .scene-buf-overlay { @apply absolute inset-0 w-full h-full pointer-events-none; }
   .scene-layer.hl-active { background: var(--scene-layer-hover-bg); box-shadow: var(--scene-layer-hover-shadow); z-index: 10; }

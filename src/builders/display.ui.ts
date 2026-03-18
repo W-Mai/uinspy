@@ -9,7 +9,7 @@ const __css = css`
   .disp-tab-bar { @apply flex gap-1 mb-2 pb-2 border-b-s0; }
   .disp-tab-btn {
     @apply flex flex-col items-center gap-1 font-mono text-[11px] text-subtext0 cursor-pointer bg-mantle px-3 py-1 border-s0; border-bottom: none;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    border-radius: var(--ui-radius-sm) var(--ui-radius-sm) 0 0;
     transition: background var(--transition), color var(--transition);
   }
   .disp-tab-btn:hover { @apply bg-surface0; }

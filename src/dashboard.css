@@ -20,7 +20,7 @@
   /* Panel */
   .panel {
     @apply flex flex-col overflow-hidden bg-panel-bg;
-    border: 1px solid var(--panel-border); border-radius: var(--radius);
+    border: 1px solid var(--panel-border); border-radius: var(--ui-radius);
     box-shadow: var(--panel-glow); transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   }
   .panel:hover { border-color: var(--surface1); box-shadow: 0 0 0 1px var(--surface1), var(--shadow-hover), var(--panel-hover-glow); }
