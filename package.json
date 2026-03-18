@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun ./index.html",
+    "dev": "bun run dev-css.ts && bun ./index.html",
     "build": "bun run build.ts"
   },
   "devDependencies": {
