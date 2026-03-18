@@ -16,6 +16,6 @@ class UiTree extends BaseComponent {
   `;
 
   render() {
-    return this.h("div", { class: "empty" }, "No UI data loaded. Pass JSON to inspect.");
+    this.root.append(this.html`<div class="empty">No UI data loaded. Pass JSON to inspect.</div>`);
   }
 }

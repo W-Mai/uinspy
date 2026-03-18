@@ -8,7 +8,6 @@ export abstract class BaseComponent extends HTMLElement {
   }
 
   connectedCallback() {
-    // Auto-inject style from @style decorator
     const ctor = this.constructor as typeof BaseComponent & { __style?: string };
     if (ctor.__style) {
       const style = document.createElement("style");
@@ -20,17 +19,16 @@ export abstract class BaseComponent extends HTMLElement {
 
   protected abstract render(): void;
 
-  // Create element with attributes and children
-  protected h<K extends keyof HTMLElementTagNameMap>(
-    tag: K,
-    attrs?: Record<string, string>,
-    ...children: (string | Node)[]
-  ): HTMLElementTagNameMap[K] {
-    const el = document.createElement(tag);
-    if (attrs) Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-    children.forEach((c) =>
-      el.append(typeof c === "string" ? document.createTextNode(c) : c)
-    );
-    return el;
+  // Query element within shadow root
+  protected $<T extends HTMLElement>(selector: string): T {
+    return this.root.querySelector(selector) as T;
+  }
+
+  // Compile-time only: this.html`...` is transformed by plugin to DOM operations.
+  // This runtime fallback exists for type checking and edge cases.
+  protected html(strings: TemplateStringsArray, ...values: unknown[]): DocumentFragment {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = String.raw(strings, ...values);
+    return tpl.content.cloneNode(true) as DocumentFragment;
   }
 }

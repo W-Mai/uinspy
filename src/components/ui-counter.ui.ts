@@ -18,9 +18,9 @@ class UiCounter extends BaseComponent {
   private count = signal(0);
 
   render() {
-    const btn = this.h("button", {}, `Count is ${this.count.val}`);
+    this.root.append(this.html`<button>Count is ${this.count.val}</button>`);
+    const btn = this.$<HTMLButtonElement>("button");
     btn.onclick = () => this.count.val++;
     this.count.sub(() => (btn.textContent = `Count is ${this.count.val}`));
-    return btn;
   }
 }
