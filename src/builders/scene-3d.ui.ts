@@ -98,25 +98,25 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const scale = C.VIEWPORT_SIZE / Math.max(sceneW, sceneH);
   const sw = sceneW * scale, sh = sceneH * scale;
 
-  // Buffer layer
-  let bufBase64: string | null = null;
-  displays.forEach(d => { if (bufBase64) return; [d.buf_1, d.buf_2].forEach(b => { if (!bufBase64 && b?.image_base64) bufBase64 = b.image_base64; }); });
-
-  let bufLayer: HTMLElement | null = null;
-  if (bufBase64) {
-    bufLayer = el("div", "scene-buf-layer");
-    bufLayer.style.width = sw + "px"; bufLayer.style.height = sh + "px";
-    const img = document.createElement("img");
-    img.src = "data:image/png;base64," + bufBase64;
-    img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "fill"; img.draggable = false;
-    bufLayer.appendChild(img);
-    const bufCanvas = document.createElement("canvas");
-    bufCanvas.className = "scene-buf-overlay"; bufCanvas.width = sw; bufCanvas.height = sh;
-    bufLayer.appendChild(bufCanvas);
-    displays.forEach(d => {
-      registerOverlay(d.addr + "-3d", { canvas: bufCanvas, w: d.hor_res, h: d.ver_res, objs: dispObjs[d.addr] || [] });
+  // Buffer layers (supports buf_1 + buf_2)
+  const bufEntries: { el: HTMLElement; label: string }[] = [];
+  displays.forEach(d => {
+    [d.buf_1, d.buf_2].forEach((b, i) => {
+      if (!b?.image_base64) return;
+      const layer = el("div", "scene-buf-layer");
+      layer.style.width = sw + "px"; layer.style.height = sh + "px";
+      const img = document.createElement("img");
+      img.src = "data:image/png;base64," + b.image_base64;
+      img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "fill"; img.draggable = false;
+      layer.appendChild(img);
+      const bufCanvas = document.createElement("canvas");
+      bufCanvas.className = "scene-buf-overlay"; bufCanvas.width = sw; bufCanvas.height = sh;
+      layer.appendChild(bufCanvas);
+      registerOverlay(d.addr + "-3d-buf" + (i + 1), { canvas: bufCanvas, w: d.hor_res, h: d.ver_res, objs: dispObjs[d.addr] || [] });
+      bufEntries.push({ el: layer, label: "Buf" + (i + 1) });
     });
-  }
+  });
+  const hasBuf = bufEntries.length > 0;
 
   // Controls
   const makeToggle = (label: string, on: boolean) => {
@@ -128,10 +128,15 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const controls = el("div", "scene-controls");
   const toggle3d = makeToggle("3D", true);
   const toggleBorders = makeToggle("Borders", true);
-  const toggleBuf = makeToggle("Buffer", !!bufBase64);
+  const bufToggles: HTMLButtonElement[] = [];
   const toggleOrtho = makeToggle("Ortho", false);
   controls.append(toggle3d, toggleBorders);
-  if (bufBase64) controls.appendChild(toggleBuf);
+  bufEntries.forEach((be, i) => {
+    const btn = makeToggle(be.label, true);
+    btn.addEventListener("click", () => { be.el.style.display = btn.dataset.on === "1" ? "" : "none"; });
+    bufToggles.push(btn);
+    controls.appendChild(btn);
+  });
   controls.appendChild(toggleOrtho);
 
   const defaultSpread = maxDepth > 0 ? Math.round(300 / maxDepth) : 30;
@@ -237,7 +242,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   scene.style.width = sw + "px"; scene.style.height = sh + "px";
   viewport.appendChild(scene);
   container.appendChild(viewport);
-  if (bufLayer) scene.appendChild(bufLayer);
+  bufEntries.forEach(be => scene.appendChild(be.el));
 
   // Layer elements
   const layerEls: { el: HTMLElement; depth: number; localDepth: number; screenIdx: number }[] = [];
@@ -273,7 +278,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       le.el.style.display = "";
       le.el.style.transform = "translateZ(" + ((screenOffset[le.screenIdx] + le.localDepth) * spread) + "px)";
     });
-    if (bufLayer) bufLayer.style.transform = "translateZ(" + (-spread * 1.5) + "px)";
+    bufEntries.forEach(be => { be.el.style.transform = "translateZ(" + (-spread * 1.5) + "px)"; });
   }
 
   function applyRot(ov?: { rotX: number; rotY: number }) {
@@ -309,7 +314,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   toggle3d.addEventListener("click", () => { st.is3d = toggle3d.dataset.on === "1"; spreadSlider.disabled = !st.is3d; animateToggle(st.is3d); });
   toggleOrtho.addEventListener("click", () => applyRot());
   toggleBorders.addEventListener("click", () => applyVis());
-  if (bufBase64) toggleBuf.addEventListener("click", () => { if (bufLayer) bufLayer.style.display = toggleBuf.dataset.on === "1" ? "" : "none"; });
+  // (buf toggle events already bound above)
 
   // Mouse interaction
   viewport.onmousedown = e => {
@@ -366,11 +371,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     spreadSlider.value = String(defaultSpread); spreadSlider.disabled = false;
     toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
     toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
-    if (toggleBuf) { toggleBuf.dataset.on = bufBase64 ? "1" : "0"; toggleBuf.classList.toggle("active", !!bufBase64); }
+    bufToggles.forEach(btn => { btn.dataset.on = "1"; btn.classList.add("active"); });
+    bufEntries.forEach(be => { be.el.style.display = ""; });
     toggleOrtho.dataset.on = "0"; toggleOrtho.classList.remove("active");
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
-    if (bufLayer) bufLayer.style.display = bufBase64 ? "" : "none";
     applyRot(); applyVis();
   };
 }

@@ -8,7 +8,7 @@ import type { DashboardData, ObjNode } from "../types";
 const __css = css`
   .disp-tab-bar { @apply flex gap-1 mb-2 pb-2 border-b-s0; }
   .disp-tab-btn {
-    @apply flex flex-col items-center gap-1 font-mono text-[11px] text-subtext0 cursor-pointer bg-mantle px-3 py-1 border-s0; border-bottom: none;
+    @apply flex items-center gap-1.5 font-mono text-[11px] text-subtext0 cursor-pointer bg-mantle px-3 py-1 border-s0; border-bottom: none;
     border-radius: var(--ui-radius-sm) var(--ui-radius-sm) 0 0;
     transition: background var(--transition), color var(--transition);
   }
@@ -104,12 +104,12 @@ export function buildDisplayAndTrees(data: DashboardData) {
   entries.forEach((entry, i) => {
     const d = entry.disp;
     const btn = el("button", "disp-tab-btn");
-    const bufData = d.buf_1?.image_base64 || d.buf_2?.image_base64;
-    if (bufData) {
+    [d.buf_1, d.buf_2].forEach(b => {
+      if (!b?.image_base64) return;
       const thumb = document.createElement("img");
-      thumb.className = "disp-tab-thumb"; thumb.src = "data:image/png;base64," + bufData; thumb.draggable = false;
+      thumb.className = "disp-tab-thumb"; thumb.src = "data:image/png;base64," + b.image_base64; thumb.draggable = false;
       btn.appendChild(thumb);
-    }
+    });
     btn.appendChild(document.createTextNode(d.hor_res + "×" + d.ver_res));
     btn.addEventListener("click", () => showDisplay(i));
     tabBtns.push(btn);
