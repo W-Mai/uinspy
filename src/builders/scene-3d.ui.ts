@@ -8,10 +8,11 @@ const __css = css`
   .scene-controls { @apply flex items-center gap-2 mb-1 py-1.5; }
   .scene-label { @apply text-overlay1 uppercase text-[10px] font-medium; letter-spacing: .3px; }
   .scene-slider { @apply w-30 h-1 cursor-pointer; accent-color: var(--blue); }
-  .scene-reset-btn, .scene-toggle-btn {
+  .scene-reset-btn, .scene-toggle-btn, .scene-fullscreen-btn {
     @apply rounded py-0.5 px-2 text-[10px] text-overlay1 cursor-pointer bg-base border-s0 transition-theme;
   }
-  .scene-reset-btn:hover, .scene-toggle-btn:hover { @apply border-blue text-blue; }
+  .scene-reset-btn:hover, .scene-toggle-btn:hover, .scene-fullscreen-btn:hover { @apply border-blue text-blue; }
+  .scene-spacer { @apply flex-1; }
   .scene-toggle-btn { @apply font-semibold; }
   .scene-toggle-btn.active { @apply bg-icon-bg-blue text-blue border-blue; }
   .scene-layer-bar { @apply flex flex-wrap gap-1 py-1; }
@@ -25,6 +26,8 @@ const __css = css`
     @apply relative flex-1 w-full min-h-[400px] overflow-hidden cursor-grab rounded-lg bg-crust;
     perspective: 1200px; @apply border-s0; transform-origin: center center;
   }
+  .obj-3d-view:fullscreen { @apply bg-crust p-2 flex flex-col; }
+  .obj-3d-view:fullscreen .scene-viewport { @apply min-h-0; }
   .scene-3d { @apply absolute; transform-style: preserve-3d; top: 50%; left: 50%; }
   .scene-layer {
     @apply absolute rounded-[2px] cursor-pointer;
@@ -134,7 +137,14 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   controls.appendChild(el("label", "scene-label", "Z Spread"));
   controls.appendChild(spreadSlider);
   const resetBtn = el("button", "scene-reset-btn", "Reset");
-  controls.appendChild(resetBtn);
+  const spacer = el("span", "scene-spacer");
+  const fsBtn = el("button", "scene-fullscreen-btn", "⛶");
+  fsBtn.title = "Fullscreen";
+  fsBtn.onclick = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else container.requestFullscreen();
+  };
+  controls.append(resetBtn, spacer, fsBtn);
   container.appendChild(controls);
 
   // Layer filter bar
