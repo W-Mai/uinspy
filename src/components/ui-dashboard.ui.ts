@@ -31,6 +31,13 @@ class UiDashboard extends BaseComponent {
     .panel-subjects > .panel-body, .panel-fs-drivers > .panel-body,
     .panel-decoders > .panel-body { @apply overflow-y-auto; }
 
+    .panel-about { grid-column: 1 / -1; }
+    .panel-about .panel-body {
+      @apply flex items-center justify-center gap-4 text-overlay0 text-[11px] py-1.5;
+    }
+    .panel-about a { @apply text-blue no-underline; }
+    .panel-about a:hover { @apply underline; }
+
     /* Responsive */
     @media (max-width: 1200px) {
       .bento { grid-template-columns: repeat(6, 1fr); }
@@ -77,6 +84,12 @@ class UiDashboard extends BaseComponent {
       bento.appendChild(buildDrawTasks(data));
       bento.appendChild(buildSubjects(data));
       bento.appendChild(buildFsDrivers(data));
+
+      const about = el("div", "panel panel-about");
+      const body = el("div", "panel-body");
+      body.innerHTML = `<span>uinspy v${__UINSPY_VERSION__}</span><span>·</span><span>Built ${__UINSPY_BUILD_TIME__}</span><span>·</span><a href="https://github.com/W-Mai/uinspy" target="_blank">GitHub</a><span>·</span><a href="https://lvgl.io" target="_blank">LVGL</a><span>·</span><span>MIT</span>`;
+      about.appendChild(body);
+      bento.appendChild(about);
 
       grid.appendChild(bento);
     });

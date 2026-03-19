@@ -7,12 +7,19 @@ const tmpDir = ".build_tmp";
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist");
 
+const pkg = await Bun.file("./package.json").json();
+const buildTime = new Date().toLocaleString("sv-SE", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
+
 const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; identifiers: boolean }, outdir: string) => ({
   entrypoints: ["./src/app.ts"],
   outdir,
   target: "browser" as const,
   minify,
   plugins: [uiPlugin],
+  define: {
+    __UINSPY_VERSION__: JSON.stringify(pkg.version),
+    __UINSPY_BUILD_TIME__: JSON.stringify(buildTime),
+  },
 });
 
 // Clear collected CSS from previous runs

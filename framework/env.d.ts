@@ -15,3 +15,6 @@ declare const BaseComponent: typeof import("./base").BaseComponent;
 
 /** Shared reactive store factory. Auto-imported in .ui.ts files */
 declare function store<T extends Record<string, unknown>>(init: T): import("./store").Store<T>;
+
+declare const __UINSPY_VERSION__: string;
+declare const __UINSPY_BUILD_TIME__: string;
