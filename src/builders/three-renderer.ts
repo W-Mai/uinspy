@@ -221,17 +221,22 @@ export class ThreeRenderer implements ISceneRenderer {
     const y = dist * Math.sin(rx);
     const z = dist * Math.cos(ry) * Math.cos(rx);
 
-    this.camera.position.set(
-      x + this.cam.panX,
-      y + this.cam.panY,
-      z
-    );
-    this.camera.lookAt(this.cam.panX, this.cam.panY, 0);
+    // Pan along camera-local right/up axes
+    const forward = new THREE.Vector3(-x, -y, -z).normalize();
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3().crossVectors(forward, worldUp).normalize();
+    const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+
+    const panOffset = right.multiplyScalar(-this.cam.panX).add(up.multiplyScalar(this.cam.panY));
+
+    this.camera.position.set(x + panOffset.x, y + panOffset.y, z + panOffset.z);
+    this.camera.lookAt(panOffset.x, panOffset.y, panOffset.z);
 
     // Apply zoom for perspective
     if (this.camera instanceof THREE.PerspectiveCamera) {
-      this.camera.position.multiplyScalar(1 / this.cam.zoom);
-      this.camera.lookAt(this.cam.panX, this.cam.panY, 0);
+      const target = new THREE.Vector3(panOffset.x, panOffset.y, panOffset.z);
+      this.camera.position.sub(target).multiplyScalar(1 / this.cam.zoom).add(target);
+      this.camera.lookAt(target);
     }
   }
 
