@@ -328,9 +328,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   let savedSpread = defaultSpread;
 
+  let savedPersp = cam.persp;
+
   function animateToggle(entering: boolean) {
-    if (!entering) { savedRotX = cam.rotX; savedRotY = cam.rotY; savedSpread = Number(spreadSlider.value) || defaultSpread; }
-    animateTo({ rotX: entering ? savedRotX : 0, rotY: entering ? savedRotY : 0, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: entering ? savedSpread : 0, persp: cam.persp }, () => {
+    if (!entering) { savedRotX = cam.rotX; savedRotY = cam.rotY; savedSpread = Number(spreadSlider.value) || defaultSpread; savedPersp = cam.persp; }
+    animateTo({ rotX: entering ? savedRotX : 0, rotY: entering ? savedRotY : 0, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: entering ? savedSpread : 0, persp: entering ? savedPersp : 0 }, () => {
       spreadSlider.value = String(savedSpread);
     });
   }
