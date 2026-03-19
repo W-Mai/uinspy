@@ -4,8 +4,8 @@ import { dashData } from "../state";
 class UiDropZone extends BaseComponent {
   static __style = css`
     #drop-zone {
-      @apply hidden flex-col items-center justify-center text-center text-overlay1 cursor-pointer rounded-xl min-h-[calc(100vh-92px)] p-12 mx-4 my-3;
-      grid-column: 1 / -1; border: 2px dashed var(--surface1); @apply transition-theme;
+      @apply hidden flex-col items-center justify-center text-center text-overlay1 cursor-pointer rounded-xl flex-1 p-12 mx-4 my-3;
+      border: 2px dashed var(--surface1); @apply transition-theme;
     }
     #drop-zone:hover, #drop-zone.dragover { @apply border-blue bg-glow-blue; }
     .drop-icon { @apply text-4xl mb-2; }
@@ -34,6 +34,9 @@ class UiDropZone extends BaseComponent {
     }
 
     zone.style.display = "flex";
+    this.style.display = "flex";
+    this.style.flexDirection = "column";
+    this.style.flex = "1";
 
     const load = (file: File) => {
       const reader = new FileReader();
@@ -41,6 +44,7 @@ class UiDropZone extends BaseComponent {
         try {
           dashData.val = JSON.parse(reader.result as string);
           zone.style.display = "none";
+          this.style.display = "none";
         } catch (e) { alert("Invalid JSON: " + (e as Error).message); }
       };
       reader.readAsText(file);
