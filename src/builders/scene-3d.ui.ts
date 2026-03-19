@@ -190,7 +190,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     container.addEventListener("keydown", () => { exitSS(); resetSSTimer(); });
     container.addEventListener("wheel", () => { exitSS(); resetSSTimer(); });
     document.addEventListener("fullscreenchange", () => {
-      if (!document.fullscreenElement) { exitSS(); if (ssTimer) { clearTimeout(ssTimer); ssTimer = null; } }
+      if (!document.fullscreenElement) {
+        // Force stop screensaver — ESC doesn't trigger keydown
+        container.classList.remove("screensaver");
+        if (ssAnimId) { cancelAnimationFrame(ssAnimId); ssAnimId = null; }
+        if (ssTimer) { clearTimeout(ssTimer); ssTimer = null; }
+        renderer.markDirty();
+      }
       else resetSSTimer();
     });
     controls.appendChild(ssBtn);
