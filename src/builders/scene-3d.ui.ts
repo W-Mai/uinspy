@@ -54,6 +54,7 @@ const __css = css`
     font: 600 8px/1 system-ui; color: var(--overlay1);
     backface-visibility: visible;
     transition: background 0.15s, color 0.15s;
+    user-select: none;
   }
   .vc-face {
     background: var(--surface0); border: 1px solid var(--surface1);
