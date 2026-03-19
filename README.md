@@ -1,8 +1,33 @@
 # uinspy
 
-*you eye spy* — A single-file UI inspector for [LVGL](https://lvgl.io) runtime state.
+<p align="center">
+  <img src="static/uinspy.svg" width="200" alt="uinspy logo"/>
+</p>
+
+<p align="center">
+  <strong>uinspy — you eye spy</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/W-Mai/uinspy/releases/latest">
+    <img src="https://img.shields.io/github/v/release/W-Mai/uinspy?style=flat-square" alt="Release" />
+  </a>
+  <a href="https://github.com/W-Mai/uinspy/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/W-Mai/uinspy?style=flat-square" alt="License" />
+  </a>
+  <a href="https://github.com/W-Mai/uinspy/actions/workflows/pages.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/W-Mai/uinspy/pages.yml?style=flat-square&label=pages" alt="Pages" />
+  </a>
+  <a href="https://github.com/W-Mai/uinspy/releases">
+    <img src="https://img.shields.io/github/downloads/W-Mai/uinspy/total?style=flat-square" alt="Downloads" />
+  </a>
+</p>
+
+A single-file UI inspector for [LVGL](https://lvgl.io) runtime state.
 
 Drop a JSON dump from your LVGL device and get an interactive dashboard: object trees, 3D exploded view, animations, timers, input devices, image caches, and more — all in one self-contained HTML file with zero dependencies.
+
+![](static/snapshots/snapshot_001.png)
 
 ## Features
 
