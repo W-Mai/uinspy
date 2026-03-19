@@ -19,8 +19,7 @@ export interface BufImage {
 export interface Camera {
   rotX: number; rotY: number;
   zoom: number; panX: number; panY: number;
-  perspective: number;
-  ortho: boolean;
+  persp: number; // 0 = orthographic, 1 = full perspective
 }
 
 export type HitResult = { layer: SceneLayer; index: number } | null;

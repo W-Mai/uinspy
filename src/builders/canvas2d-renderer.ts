@@ -1,5 +1,6 @@
 // Canvas 2D scene renderer with manual 3D projection
 
+import { C } from "../constants";
 import type { SceneLayer, BufImage, Camera, HitResult } from "./scene-renderer";
 import type { ISceneRenderer } from "./scene-renderer";
 
@@ -32,7 +33,7 @@ export class Canvas2DRenderer implements ISceneRenderer {
 
   // 3D point → 2D screen projection
   private project(px: number, py: number, pz: number): [number, number, number] {
-    const { rotX, rotY, zoom, panX, panY, perspective, ortho } = this.cam;
+    const { rotX, rotY, zoom, panX, panY, persp } = this.cam;
     const rx = -rotX * Math.PI / 180, ry = -rotY * Math.PI / 180;
     const cx = Math.cos(rx), sx = Math.sin(rx);
     const cy = Math.cos(ry), sy = Math.sin(ry);
@@ -46,7 +47,11 @@ export class Canvas2DRenderer implements ISceneRenderer {
 
     const rect = this.canvas.getBoundingClientRect();
     const cw = rect.width, ch = rect.height;
-    const scale = ortho ? zoom : (perspective / (perspective + z)) * zoom;
+    // persp=0 → ortho (scale=zoom), persp=1 → full perspective
+    const p = C.PERSPECTIVE_DISTANCE;
+    const perspScale = (p / (p + z)) * zoom;
+    const orthoScale = zoom;
+    const scale = orthoScale + (perspScale - orthoScale) * persp;
 
     return [
       cw / 2 + (x + panX) * scale,

@@ -27,7 +27,7 @@ function roundedRectShape(w: number, h: number, r: number): THREE.Shape {
 export class ThreeRenderer implements ISceneRenderer {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  private camera: THREE.PerspectiveCamera;
   private cam: Camera;
   private sceneW = 0;
   private sceneH = 0;
@@ -73,14 +73,10 @@ export class ThreeRenderer implements ISceneRenderer {
     this.startLoop();
   }
 
-  private createCamera(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
+  private createCamera(): THREE.PerspectiveCamera {
     const rect = this.canvas.getBoundingClientRect();
     const aspect = rect.width / rect.height || 1;
-    if (this.cam.ortho) {
-      const h = 300 / this.cam.zoom;
-      return new THREE.OrthographicCamera(-h * aspect, h * aspect, h, -h, -10000, 10000);
-    }
-    return new THREE.PerspectiveCamera(45, aspect, 0.1, 10000);
+    return new THREE.PerspectiveCamera(45, aspect, 0.1, 100000);
   }
 
   setSceneSize(w: number, h: number) {
@@ -224,29 +220,30 @@ export class ThreeRenderer implements ISceneRenderer {
     const rect = this.canvas.getBoundingClientRect();
     const aspect = rect.width / rect.height || 1;
 
-    // Recreate camera if ortho mode changed
-    const needsOrtho = this.cam.ortho;
-    const isOrtho = this.camera instanceof THREE.OrthographicCamera;
-    if (needsOrtho !== isOrtho) {
+    // Always use PerspectiveCamera; persp=0→1 controls FOV for smooth ortho transition
+    if (!(this.camera instanceof THREE.PerspectiveCamera)) {
       this.scene.remove(this.camera);
-      this.camera = this.createCamera();
+      this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100000);
       this.scene.add(this.camera);
     }
 
-    if (this.camera instanceof THREE.PerspectiveCamera) {
-      this.camera.aspect = aspect;
-      this.camera.updateProjectionMatrix();
-    } else {
-      const h = 300 / this.cam.zoom;
-      this.camera.left = -h * aspect;
-      this.camera.right = h * aspect;
-      this.camera.top = h;
-      this.camera.bottom = -h;
-      this.camera.updateProjectionMatrix();
-    }
+    // persp: 0=ortho (tiny FOV, far camera), 1=full perspective (45° FOV)
+    const maxFov = 45;
+    const minFov = 0.5;
+    const fov = minFov + (maxFov - minFov) * this.cam.persp;
+    // Keep apparent size constant by scaling distance with FOV
+    const baseDist = 1200;
+    const baseTan = Math.tan(maxFov * Math.PI / 360);
+    const curTan = Math.tan(fov * Math.PI / 360);
+    const dist = baseDist * baseTan / curTan;
 
-    // Convert rotX/rotY + distance to camera position
-    const dist = this.cam.perspective;
+    const cam = this.camera as THREE.PerspectiveCamera;
+    cam.aspect = aspect;
+    cam.fov = fov;
+    cam.near = dist * 0.001;
+    cam.far = dist * 10;
+    cam.updateProjectionMatrix();
+
     const rx = -this.cam.rotX * Math.PI / 180;
     const ry = -this.cam.rotY * Math.PI / 180;
 
@@ -263,14 +260,12 @@ export class ThreeRenderer implements ISceneRenderer {
     const panOffset = right.multiplyScalar(-this.cam.panX).add(up.multiplyScalar(this.cam.panY));
 
     this.camera.position.set(x + panOffset.x, y + panOffset.y, z + panOffset.z);
-    this.camera.lookAt(panOffset.x, panOffset.y, panOffset.z);
+    const target = new THREE.Vector3(panOffset.x, panOffset.y, panOffset.z);
+    this.camera.lookAt(target);
 
-    // Apply zoom for perspective
-    if (this.camera instanceof THREE.PerspectiveCamera) {
-      const target = new THREE.Vector3(panOffset.x, panOffset.y, panOffset.z);
-      this.camera.position.sub(target).multiplyScalar(1 / this.cam.zoom).add(target);
-      this.camera.lookAt(target);
-    }
+    // Apply zoom
+    this.camera.position.sub(target).multiplyScalar(1 / this.cam.zoom).add(target);
+    this.camera.lookAt(target);
   }
 
   private resizeRenderer() {

@@ -109,7 +109,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const cam: Camera = {
     rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y,
     zoom: 1, panX: 0, panY: 0,
-    perspective: C.PERSPECTIVE_DISTANCE, ortho: false,
+    persp: 1,
   };
 
   // Controls
@@ -301,13 +301,9 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   function ease(t: number) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
-  function animateTo(target: { rotX: number; rotY: number; zoom: number; panX: number; panY: number; spread: number; ortho: boolean }, done?: () => void) {
+  function animateTo(target: { rotX: number; rotY: number; zoom: number; panX: number; panY: number; spread: number; persp: number }, done?: () => void) {
     if (animId) { cancelAnimationFrame(animId); animId = null; }
-    // Simulate ortho via large perspective value during animation
-    const ORTHO_PERSP = 1e7;
-    if (cam.ortho) { cam.ortho = false; cam.perspective = ORTHO_PERSP; }
-    const from = { rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, perspective: cam.perspective };
-    const targetPersp = target.ortho ? ORTHO_PERSP : C.PERSPECTIVE_DISTANCE;
+    const from = { rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp };
     const t0 = performance.now();
     function tick(now: number) {
       const t = ease(Math.min((now - t0) / C.ANIM_DURATION, 1));
@@ -316,15 +312,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       cam.zoom = from.zoom + (target.zoom - from.zoom) * t;
       cam.panX = from.panX + (target.panX - from.panX) * t;
       cam.panY = from.panY + (target.panY - from.panY) * t;
-      cam.perspective = Math.exp(Math.log(from.perspective) + (Math.log(targetPersp) - Math.log(from.perspective)) * t);
+      cam.persp = from.persp + (target.persp - from.persp) * t;
       updateDepths(from.spread + (target.spread - from.spread) * t);
       if (now - t0 < C.ANIM_DURATION) animId = requestAnimationFrame(tick);
       else {
         animId = null;
         cam.rotX = target.rotX; cam.rotY = target.rotY; cam.zoom = target.zoom;
-        cam.panX = target.panX; cam.panY = target.panY;
-        cam.ortho = target.ortho;
-        cam.perspective = C.PERSPECTIVE_DISTANCE;
+        cam.panX = target.panX; cam.panY = target.panY; cam.persp = target.persp;
         spreadSlider.value = String(target.spread);
         updateDepths(); done?.();
       }
@@ -336,7 +330,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   function animateToggle(entering: boolean) {
     if (!entering) { savedRotX = cam.rotX; savedRotY = cam.rotY; savedSpread = Number(spreadSlider.value) || defaultSpread; }
-    animateTo({ rotX: entering ? savedRotX : 0, rotY: entering ? savedRotY : 0, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: entering ? savedSpread : 0, ortho: cam.ortho }, () => {
+    animateTo({ rotX: entering ? savedRotX : 0, rotY: entering ? savedRotY : 0, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: entering ? savedSpread : 0, persp: cam.persp }, () => {
       spreadSlider.value = String(savedSpread);
     });
   }
@@ -348,7 +342,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   toggle3d.addEventListener("click", () => { is3d = toggle3d.dataset.on === "1"; spreadSlider.disabled = !is3d; animateToggle(is3d); });
   toggleOrtho.addEventListener("click", () => {
     const ortho = toggleOrtho.dataset.on === "1";
-    animateTo({ rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: Number(spreadSlider.value), ortho });
+    animateTo({ rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: ortho ? 0 : 1 });
   });
   toggleBorders.addEventListener("click", () => updateVisibility());
   bufToggles.forEach(btn => btn.addEventListener("click", () => updateVisibility()));
@@ -427,6 +421,6 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
     spreadSlider.disabled = false;
-    animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, ortho: false });
+    animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1 });
   };
 }
