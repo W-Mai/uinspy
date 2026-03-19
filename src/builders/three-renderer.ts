@@ -1,9 +1,6 @@
 // Three.js WebGL scene renderer
 
 import * as THREE from "three";
-import { Line2 } from "three/examples/jsm/lines/Line2.js";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { SceneLayer, BufImage, Camera, HitResult } from "./scene-renderer";
 import type { ISceneRenderer } from "./scene-renderer";
 
@@ -112,35 +109,63 @@ export class ThreeRenderer implements ISceneRenderer {
       const r = 0; // border radius — ready for future use
       const shape = roundedRectShape(l.w, l.h, r);
       const geo = new THREE.ShapeGeometry(shape);
-      const mat = new THREE.MeshBasicMaterial({
-        color: 0x89b4fa,
+
+      // Compute UV for border detection in shader
+      // ShapeGeometry vertices are in local coords [-w/2..w/2, -h/2..h/2]
+      const pos = geo.attributes.position;
+      const uv = new Float32Array(pos.count * 2);
+      for (let j = 0; j < pos.count; j++) {
+        uv[j * 2] = (pos.getX(j) + l.w / 2) / l.w;
+        uv[j * 2 + 1] = (pos.getY(j) + l.h / 2) / l.h;
+      }
+      geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+
+      const mat = new THREE.ShaderMaterial({
         transparent: true,
-        opacity: 0.06,
         side: THREE.DoubleSide,
         depthWrite: false,
+        uniforms: {
+          fillColor: { value: new THREE.Color(0x89b4fa) },
+          fillOpacity: { value: 0.06 },
+          borderColor: { value: new THREE.Color(l.borderColor) },
+          borderWidth: { value: 1.5 },
+          size: { value: new THREE.Vector2(l.w, l.h) },
+          radius: { value: r },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 fillColor;
+          uniform float fillOpacity;
+          uniform vec3 borderColor;
+          uniform float borderWidth;
+          uniform vec2 size;
+          uniform float radius;
+          varying vec2 vUv;
+          void main() {
+            vec2 px = vUv * size;
+            float dL = px.x, dR = size.x - px.x;
+            float dT = px.y, dB = size.y - px.y;
+            float d = min(min(dL, dR), min(dT, dB));
+            // borderWidth in screen pixels via fwidth
+            float pixelSize = fwidth(d);
+            float bw = borderWidth * pixelSize;
+            float borderMask = 1.0 - smoothstep(bw - pixelSize * 0.5, bw + pixelSize * 0.5, d);
+            vec3 col = mix(fillColor, borderColor, borderMask);
+            float alpha = mix(fillOpacity, 1.0, borderMask);
+            gl_FragColor = vec4(col, alpha);
+          }
+        `,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.userData = { layerIndex: i, layer: l };
       this.layerMeshes.push(mesh);
       this.layerGroup.add(mesh);
-
-      // Border via Line2 (fat lines with controllable width)
-      const pts = shape.getPoints(r > 0 ? 32 : 4);
-      const positions: number[] = [];
-      // Close loop: append first point, skip duplicate last point from getPoints
-      const loop = pts[pts.length - 1].equals(pts[0]) ? pts.slice(0, -1) : pts;
-      for (const p of loop) positions.push(p.x, p.y, 0);
-      positions.push(loop[0].x, loop[0].y, 0);
-      const lineGeo = new LineGeometry();
-      lineGeo.setPositions(positions);
-      const lineMat = new LineMaterial({
-        color: new THREE.Color(l.borderColor).getHex(),
-        linewidth: 1,
-        resolution: new THREE.Vector2(1, 1),
-      });
-      const line = new Line2(lineGeo, lineMat);
-      line.computeLineDistances();
-      mesh.add(line);
     });
   }
 
@@ -156,6 +181,9 @@ export class ThreeRenderer implements ISceneRenderer {
       opacity: 0.85,
       side: THREE.DoubleSide,
       depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.userData = { buf };
@@ -192,17 +220,11 @@ export class ThreeRenderer implements ISceneRenderer {
       );
 
       // Update highlight
-      const mat = mesh.material as THREE.MeshBasicMaterial;
+      const mat = mesh.material as THREE.ShaderMaterial;
       const isHl = l.addr === this.hlAddr;
-      mat.opacity = isHl ? 0.25 : 0.06;
-
-      // Update border
-      const line = mesh.children[0] as Line2;
-      if (line) {
-        const lmat = line.material as LineMaterial;
-        lmat.color.set(isHl ? 0x89b4fa : l.borderColor);
-        lmat.linewidth = isHl ? 2 : 1;
-      }
+      mat.uniforms.fillOpacity.value = isHl ? 0.25 : 0.06;
+      mat.uniforms.borderColor.value.set(isHl ? 0x89b4fa : l.borderColor);
+      mat.uniforms.borderWidth.value = isHl ? 2.5 : 1.5;
     });
 
     // Update buf positions
@@ -279,13 +301,6 @@ export class ThreeRenderer implements ISceneRenderer {
   private render() {
     this.resizeRenderer();
     this.syncTransforms();
-    // Update LineMaterial resolution
-    const rect = this.canvas.getBoundingClientRect();
-    const res = new THREE.Vector2(rect.width, rect.height);
-    this.layerMeshes.forEach(m => {
-      const line = m.children[0] as Line2;
-      if (line) (line.material as LineMaterial).resolution = res;
-    });
     this.renderer.render(this.scene, this.camera);
   }
 

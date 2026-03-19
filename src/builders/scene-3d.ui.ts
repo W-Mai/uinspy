@@ -279,7 +279,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     for (let i = 0; i < screenNames.length; i++) {
       if (layerVisible[i]) { screenOffset[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
     }
-    currentSpread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0);
+    currentSpread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0.1);
     layers.forEach((l, idx) => {
       const sl = sceneLayers[idx];
       sl.visible = bordersOn && layerVisible[l.screenIdx];
