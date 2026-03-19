@@ -49,6 +49,13 @@ export const C = {
   ROTATION_SENSITIVITY: 0.4,
   SCREEN_GAP: 2,
   ANIM_DURATION: 500,
+  // ViewCube
+  VC_SIZE: 100,
+  VC_FACE: 50,
+  VC_EDGE: 8,
+  VC_CORNER: 15,
+  VC_TOP: 8,
+  VC_RIGHT: 8,
 } as const;
 
 export const INDEV_ICONS: Record<string, string> = {

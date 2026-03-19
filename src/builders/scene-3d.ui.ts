@@ -39,7 +39,7 @@ const __css = css`
     @apply hidden absolute z-50 whitespace-nowrap pointer-events-none rounded-md px-2 py-1 font-mono text-[10px] text-txt bg-base border-s0; box-shadow: 0 4px 12px #0000004d;
   }
   .viewcube-wrap {
-    @apply absolute z-40; top: 4px; right: 4px; width: 100px; height: 100px;
+    @apply absolute z-40;
     perspective: 250px;
   }
   .obj-3d-view.screensaver .viewcube-wrap { @apply !hidden; }
@@ -56,7 +56,6 @@ const __css = css`
     transition: background 0.15s, color 0.15s;
   }
   .vc-face {
-    width: 50px; height: 50px; left: 25px; top: 25px;
     background: var(--surface0); border: 1px solid var(--surface1);
     opacity: 0.85;
   }
@@ -274,35 +273,35 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   viewport.appendChild(canvas);
 
   // ViewCube — CSS 3D orientation gizmo
-  const S = 40; // half-size of cube in px
+  const S = C.VC_FACE / 2;
   type VCPreset = { rotX: number; rotY: number; label?: string };
   const vcFaces: { transform: string; preset: VCPreset; label: string; w: number; h: number }[] = [
-    { transform: `translateZ(${S}px)`,                          preset: { rotX: 0, rotY: 0 },     label: "Front", w: 50, h: 50 },
-    { transform: `rotateY(180deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 180 },   label: "Back",  w: 50, h: 50 },
-    { transform: `rotateY(90deg) translateZ(${S}px)`,           preset: { rotX: 0, rotY: -90 },   label: "Right", w: 50, h: 50 },
-    { transform: `rotateY(-90deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 90 },    label: "Left",  w: 50, h: 50 },
-    { transform: `rotateX(90deg) translateZ(${S}px)`,           preset: { rotX: -90, rotY: 0 },   label: "Top",   w: 50, h: 50 },
-    { transform: `rotateX(-90deg) translateZ(${S}px)`,          preset: { rotX: 90, rotY: 0 },    label: "Bot",   w: 50, h: 50 },
+    { transform: `translateZ(${S}px)`,                          preset: { rotX: 0, rotY: 0 },     label: "Front", w: C.VC_FACE, h: C.VC_FACE },
+    { transform: `rotateY(180deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 180 },   label: "Back",  w: C.VC_FACE, h: C.VC_FACE },
+    { transform: `rotateY(90deg) translateZ(${S}px)`,           preset: { rotX: 0, rotY: -90 },   label: "Right", w: C.VC_FACE, h: C.VC_FACE },
+    { transform: `rotateY(-90deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 90 },    label: "Left",  w: C.VC_FACE, h: C.VC_FACE },
+    { transform: `rotateX(90deg) translateZ(${S}px)`,           preset: { rotX: -90, rotY: 0 },   label: "Top",   w: C.VC_FACE, h: C.VC_FACE },
+    { transform: `rotateX(-90deg) translateZ(${S}px)`,          preset: { rotX: 90, rotY: 0 },    label: "Bot",   w: C.VC_FACE, h: C.VC_FACE },
   ];
   // Edges: 12 edges connecting faces
-  const E = S; // edge half-length
-  const ET = 8; // edge thickness
+  const E = S;
+  const ET = C.VC_EDGE;
   const vcEdges: { transform: string; preset: VCPreset; w: number; h: number }[] = [
     // Front face edges (4)
-    { transform: `translateY(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: -45, rotY: 0 },    w: 50, h: ET },
-    { transform: `translateY(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 45, rotY: 0 },     w: 50, h: ET },
-    { transform: `translateX(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: 0, rotY: 45 },     w: ET, h: 50 },
-    { transform: `translateX(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 0, rotY: -45 },    w: ET, h: 50 },
+    { transform: `translateY(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: -45, rotY: 0 },    w: C.VC_FACE, h: ET },
+    { transform: `translateY(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 45, rotY: 0 },     w: C.VC_FACE, h: ET },
+    { transform: `translateX(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: 0, rotY: 45 },     w: ET, h: C.VC_FACE },
+    { transform: `translateX(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 0, rotY: -45 },    w: ET, h: C.VC_FACE },
     // Back face edges (4)
-    { transform: `translateY(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: -45, rotY: 180 },  w: 50, h: ET },
-    { transform: `translateY(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 45, rotY: 180 },   w: 50, h: ET },
-    { transform: `translateX(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: 0, rotY: 135 },    w: ET, h: 50 },
-    { transform: `translateX(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 0, rotY: -135 },   w: ET, h: 50 },
+    { transform: `translateY(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: -45, rotY: 180 },  w: C.VC_FACE, h: ET },
+    { transform: `translateY(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 45, rotY: 180 },   w: C.VC_FACE, h: ET },
+    { transform: `translateX(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: 0, rotY: 135 },    w: ET, h: C.VC_FACE },
+    { transform: `translateX(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 0, rotY: -135 },   w: ET, h: C.VC_FACE },
     // Connecting edges (4, horizontal between front/back)
-    { transform: `translateX(-${E}px) translateY(-${E}px) rotateY(90deg)`,                  preset: { rotX: -45, rotY: 90 },   w: 50, h: ET },
-    { transform: `translateX(${E}px) translateY(-${E}px) rotateY(90deg)`,                   preset: { rotX: -45, rotY: -90 },  w: 50, h: ET },
-    { transform: `translateX(-${E}px) translateY(${E}px) rotateY(90deg)`,                   preset: { rotX: 45, rotY: 90 },    w: 50, h: ET },
-    { transform: `translateX(${E}px) translateY(${E}px) rotateY(90deg)`,                    preset: { rotX: 45, rotY: -90 },   w: 50, h: ET },
+    { transform: `translateX(-${E}px) translateY(-${E}px) rotateY(90deg)`,                  preset: { rotX: -45, rotY: 90 },   w: C.VC_FACE, h: ET },
+    { transform: `translateX(${E}px) translateY(-${E}px) rotateY(90deg)`,                   preset: { rotX: -45, rotY: -90 },  w: C.VC_FACE, h: ET },
+    { transform: `translateX(-${E}px) translateY(${E}px) rotateY(90deg)`,                   preset: { rotX: 45, rotY: 90 },    w: C.VC_FACE, h: ET },
+    { transform: `translateX(${E}px) translateY(${E}px) rotateY(90deg)`,                    preset: { rotX: 45, rotY: -90 },   w: C.VC_FACE, h: ET },
   ];
   // Corners: 8 vertices
   const vcCorners: { transform: string; preset: VCPreset }[] = [
@@ -317,26 +316,28 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   ];
 
   const vcWrap = el("div", "viewcube-wrap");
+  vcWrap.style.cssText = `top:${C.VC_TOP}px;right:${C.VC_RIGHT}px;width:${C.VC_SIZE}px;height:${C.VC_SIZE}px`;
   const vcCube = el("div", "viewcube");
+  const C2 = C.VC_SIZE / 2; // center of wrap
   function vcClick(p: VCPreset) {
     animateTo({ rotX: p.rotX, rotY: p.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp });
   }
   for (const f of vcFaces) {
     const d = el("div", "vc-face");
     d.textContent = f.label;
-    d.style.cssText = `transform:${f.transform};width:${f.w}px;height:${f.h}px`;
+    d.style.cssText = `transform:${f.transform};width:${C.VC_FACE}px;height:${C.VC_FACE}px;left:${C2-C.VC_FACE/2}px;top:${C2-C.VC_FACE/2}px`;
     d.onclick = () => vcClick(f.preset);
     vcCube.appendChild(d);
   }
   for (const e of vcEdges) {
     const d = el("div", "vc-edge");
-    d.style.cssText = `transform:${e.transform};width:${e.w}px;height:${e.h}px;left:${(100-e.w)/2}px;top:${(100-e.h)/2}px`;
+    d.style.cssText = `transform:${e.transform};width:${e.w}px;height:${e.h}px;left:${(C.VC_SIZE-e.w)/2}px;top:${(C.VC_SIZE-e.h)/2}px`;
     d.onclick = () => vcClick(e.preset);
     vcCube.appendChild(d);
   }
   for (const c of vcCorners) {
     const d = el("div", "vc-corner");
-    d.style.cssText = `transform:${c.transform};left:${50-7.5}px;top:${50-7.5}px`;
+    d.style.cssText = `transform:${c.transform};width:${C.VC_CORNER}px;height:${C.VC_CORNER}px;left:${C2-C.VC_CORNER/2}px;top:${C2-C.VC_CORNER/2}px`;
     d.onclick = () => vcClick(c.preset);
     vcCube.appendChild(d);
   }
