@@ -397,6 +397,64 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     renderer.markDirty();
   }, { passive: false });
 
+  // Keyboard controls — game-style continuous input
+  container.tabIndex = 0;
+  const keysDown = new Set<string>();
+  container.addEventListener("keydown", e => {
+    if (e.key === "Shift") { keysDown.add("shift"); return; }
+    switch (e.key) {
+      case "ArrowUp": case "ArrowDown": case "ArrowLeft": case "ArrowRight":
+      case "w": case "W": case "s": case "S": case "a": case "A": case "d": case "D":
+      case "=": case "+": case "-": case "_":
+        e.preventDefault(); keysDown.add(e.key.toLowerCase()); return;
+      case "r": case "R": resetBtn.click(); return;
+      case " ": e.preventDefault(); toggle3d.click(); return;
+      case "o": case "O": toggleOrtho.click(); return;
+      case "b": case "B": toggleBorders.click(); return;
+      default: {
+        const n = parseInt(e.key);
+        if (n >= 1 && n <= layerBtns.length) { layerBtns[n - 1].click(); }
+      }
+    }
+  });
+  container.addEventListener("keyup", e => keysDown.delete(e.key.toLowerCase()));
+  container.addEventListener("blur", () => keysDown.clear());
+
+  const vel = { rotX: 0, rotY: 0, panX: 0, panY: 0, zoom: 0 };
+  const ACCEL = 0.4, FRICTION = 0.85, PAN_ACCEL = 0.8, PAN_FRICTION = 0.92, ZOOM_ACCEL = 0.005, ZOOM_FRICTION = 0.85;
+
+  function tickKeys() {
+    const s = keysDown.has("shift") ? 3 : 1;
+    // Accelerate
+    if (keysDown.has("arrowup"))    vel.rotX += ACCEL * s;
+    if (keysDown.has("arrowdown"))  vel.rotX -= ACCEL * s;
+    if (keysDown.has("arrowleft"))  vel.rotY -= ACCEL * s;
+    if (keysDown.has("arrowright")) vel.rotY += ACCEL * s;
+    if (keysDown.has("w")) vel.panY -= PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("s")) vel.panY += PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("a")) vel.panX -= PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("d")) vel.panX += PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("=") || keysDown.has("+")) vel.zoom += ZOOM_ACCEL * s;
+    if (keysDown.has("-") || keysDown.has("_")) vel.zoom -= ZOOM_ACCEL * s;
+
+    // Apply velocity
+    cam.rotX = Math.max(-90, Math.min(90, cam.rotX + vel.rotX));
+    cam.rotY += vel.rotY;
+    cam.panX += vel.panX;
+    cam.panY += vel.panY;
+    cam.zoom = Math.max(C.MIN_ZOOM, Math.min(C.MAX_ZOOM, cam.zoom * (1 + vel.zoom)));
+
+    // Friction
+    vel.rotX *= FRICTION; vel.rotY *= FRICTION;
+    vel.panX *= PAN_FRICTION; vel.panY *= PAN_FRICTION;
+    vel.zoom *= ZOOM_FRICTION;
+
+    // Stop when negligible
+    const moving = Math.abs(vel.rotX) + Math.abs(vel.rotY) + Math.abs(vel.panX) + Math.abs(vel.panY) + Math.abs(vel.zoom) > 0.001;
+    if (moving || keysDown.size > 0) renderer.markDirty();
+  }
+  (function keyLoop() { tickKeys(); requestAnimationFrame(keyLoop); })();
+
   // Click
   canvas.addEventListener("click", e => {
     const rect = canvas.getBoundingClientRect();
