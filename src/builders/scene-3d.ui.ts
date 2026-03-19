@@ -2,8 +2,8 @@
 import { el } from "../helpers";
 import { C, DEPTH_COLORS } from "../constants";
 import { registerHL, highlightObj, clearHighlight, selectObj } from "../state";
-import { SceneRenderer } from "./scene-renderer";
-import type { SceneLayer, BufImage, Camera } from "./scene-renderer";
+import { Canvas2DRenderer } from "./canvas2d-renderer";
+import type { SceneLayer, BufImage, Camera, ISceneRenderer } from "./scene-renderer";
 import type { Display, ObjectTree, ObjNode } from "../types";
 
 const __css = css`
@@ -233,7 +233,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   container.appendChild(viewport);
 
   // Create renderer
-  const renderer = new SceneRenderer(canvas, cam);
+  const renderer: ISceneRenderer = new Canvas2DRenderer(canvas, cam);
   renderer.setSceneSize(sceneW, sceneH);
 
   // Build scene layers
