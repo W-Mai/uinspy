@@ -1,8 +1,28 @@
 // Three.js WebGL scene renderer
 
 import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { SceneLayer, BufImage, Camera, HitResult } from "./scene-renderer";
 import type { ISceneRenderer } from "./scene-renderer";
+
+// Rounded rect shape — r=0 gives a plain rectangle
+function roundedRectShape(w: number, h: number, r: number): THREE.Shape {
+  const s = new THREE.Shape();
+  const hw = w / 2, hh = h / 2;
+  r = Math.min(r, hw, hh);
+  s.moveTo(-hw + r, -hh);
+  s.lineTo(hw - r, -hh);
+  if (r > 0) s.quadraticCurveTo(hw, -hh, hw, -hh + r);
+  s.lineTo(hw, hh - r);
+  if (r > 0) s.quadraticCurveTo(hw, hh, hw - r, hh);
+  s.lineTo(-hw + r, hh);
+  if (r > 0) s.quadraticCurveTo(-hw, hh, -hw, hh - r);
+  s.lineTo(-hw, -hh + r);
+  if (r > 0) s.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+  return s;
+}
 
 export class ThreeRenderer implements ISceneRenderer {
   private renderer: THREE.WebGLRenderer;
@@ -32,9 +52,11 @@ export class ThreeRenderer implements ISceneRenderer {
     this.canvas = canvas;
     this.cam = cam;
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, premultipliedAlpha: false });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setClearColor(0x000000, 0);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.NoToneMapping;
 
     this.scene = new THREE.Scene();
     this.camera = this.createCamera();
@@ -87,12 +109,13 @@ export class ThreeRenderer implements ISceneRenderer {
   markDirty() { this.dirty = true; }
 
   private rebuildLayerMeshes() {
-    // Clear old
     this.layerGroup.clear();
     this.layerMeshes = [];
 
     this.layers.forEach((l, i) => {
-      const geo = new THREE.PlaneGeometry(l.w, l.h);
+      const r = 0; // border radius — ready for future use
+      const shape = roundedRectShape(l.w, l.h, r);
+      const geo = new THREE.ShapeGeometry(shape);
       const mat = new THREE.MeshBasicMaterial({
         color: 0x89b4fa,
         transparent: true,
@@ -105,13 +128,22 @@ export class ThreeRenderer implements ISceneRenderer {
       this.layerMeshes.push(mesh);
       this.layerGroup.add(mesh);
 
-      // Border as wireframe
-      const edges = new THREE.EdgesGeometry(geo);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
-        color: new THREE.Color(l.borderColor),
-        transparent: true,
-        opacity: 0.6,
-      }));
+      // Border via Line2 (fat lines with controllable width)
+      const pts = shape.getPoints(r > 0 ? 32 : 4);
+      const positions: number[] = [];
+      // Close loop: append first point, skip duplicate last point from getPoints
+      const loop = pts[pts.length - 1].equals(pts[0]) ? pts.slice(0, -1) : pts;
+      for (const p of loop) positions.push(p.x, p.y, 0);
+      positions.push(loop[0].x, loop[0].y, 0);
+      const lineGeo = new LineGeometry();
+      lineGeo.setPositions(positions);
+      const lineMat = new LineMaterial({
+        color: new THREE.Color(l.borderColor).getHex(),
+        linewidth: 1,
+        resolution: new THREE.Vector2(1, 1),
+      });
+      const line = new Line2(lineGeo, lineMat);
+      line.computeLineDistances();
       mesh.add(line);
     });
   }
@@ -120,6 +152,7 @@ export class ThreeRenderer implements ISceneRenderer {
     const tex = new THREE.Texture(buf.img);
     tex.needsUpdate = true;
     tex.minFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
     const geo = new THREE.PlaneGeometry(this.sceneW, this.sceneH);
     const mat = new THREE.MeshBasicMaterial({
       map: tex,
@@ -167,12 +200,12 @@ export class ThreeRenderer implements ISceneRenderer {
       const isHl = l.addr === this.hlAddr;
       mat.opacity = isHl ? 0.25 : 0.06;
 
-      // Update border color
-      const line = mesh.children[0] as THREE.LineSegments;
+      // Update border
+      const line = mesh.children[0] as Line2;
       if (line) {
-        const lmat = line.material as THREE.LineBasicMaterial;
+        const lmat = line.material as LineMaterial;
         lmat.color.set(isHl ? 0x89b4fa : l.borderColor);
-        lmat.opacity = isHl ? 0.9 : 0.6;
+        lmat.linewidth = isHl ? 2 : 1;
       }
     });
 
@@ -251,6 +284,13 @@ export class ThreeRenderer implements ISceneRenderer {
   private render() {
     this.resizeRenderer();
     this.syncTransforms();
+    // Update LineMaterial resolution
+    const rect = this.canvas.getBoundingClientRect();
+    const res = new THREE.Vector2(rect.width, rect.height);
+    this.layerMeshes.forEach(m => {
+      const line = m.children[0] as Line2;
+      if (line) (line.material as LineMaterial).resolution = res;
+    });
     this.renderer.render(this.scene, this.camera);
   }
 
