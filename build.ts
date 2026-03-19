@@ -20,6 +20,7 @@ const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; ide
     __UINSPY_VERSION__: JSON.stringify(pkg.version),
     __UINSPY_BUILD_TIME__: JSON.stringify(buildTime),
     __UINSPY_SCREENSAVER__: process.env.UINSPY_NO_SCREENSAVER ? "false" : "true",
+    __UINSPY_THREE__: process.env.UINSPY_THREE ? "true" : "false",
     __UINSPY_TITLE__: JSON.stringify(process.env.UINSPY_TITLE || "UINSPY"),
     __UINSPY_LOGO__: JSON.stringify((() => {
       const t = (process.env.UINSPY_TITLE || "UINSPY").trim().split(/\s+/);

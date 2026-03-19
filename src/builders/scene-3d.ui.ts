@@ -1,4 +1,4 @@
-// 3D exploded object tree view — Canvas 2D renderer
+// 3D exploded object tree view
 import { el } from "../helpers";
 import { C, DEPTH_COLORS } from "../constants";
 import { registerHL, highlightObj, clearHighlight, selectObj } from "../state";
@@ -232,8 +232,14 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   viewport.appendChild(canvas);
   container.appendChild(viewport);
 
-  // Create renderer
-  const renderer: ISceneRenderer = new Canvas2DRenderer(canvas, cam);
+  // Create renderer — WebGL (three.js) or Canvas2D based on build flag
+  let renderer: ISceneRenderer;
+  if (__UINSPY_THREE__) {
+    const { ThreeRenderer } = require("./three-renderer");
+    renderer = new ThreeRenderer(canvas, cam);
+  } else {
+    renderer = new Canvas2DRenderer(canvas, cam);
+  }
   renderer.setSceneSize(sceneW, sceneH);
 
   // Build scene layers

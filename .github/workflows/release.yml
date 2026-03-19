@@ -40,6 +40,18 @@ jobs:
           cp dist/uinspy.html artifacts/uinspy.html
           cp dist/uinspy.min.html artifacts/uinspy.min.html
 
+      - name: Build WebGL with logo + screensaver
+        run: UINSPY_LOGO_FAVICON=1 UINSPY_THREE=1 bun run build
+      - run: |
+          cp dist/uinspy.html artifacts/uinspy-webgl-logo-screensaver.html
+          cp dist/uinspy.min.html artifacts/uinspy-webgl-logo-screensaver.min.html
+
+      - name: Build WebGL standard
+        run: UINSPY_NO_SCREENSAVER=1 UINSPY_THREE=1 bun run build
+      - run: |
+          cp dist/uinspy.html artifacts/uinspy-webgl.html
+          cp dist/uinspy.min.html artifacts/uinspy-webgl.min.html
+
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

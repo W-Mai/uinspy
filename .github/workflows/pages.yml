@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: UINSPY_LOGO_FAVICON=1 bun run build
+      - run: UINSPY_LOGO_FAVICON=1 UINSPY_THREE=1 bun run build
       - run: cp dist/uinspy.html dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
