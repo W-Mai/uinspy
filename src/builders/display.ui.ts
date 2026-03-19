@@ -106,8 +106,8 @@ export function buildDisplayAndTrees(data: DashboardData) {
     const btn = el("button", "disp-tab-btn");
     [d.buf_1, d.buf_2].forEach(b => {
       if (!b?.image_base64) return;
-      const thumb = document.createElement("img");
-      thumb.className = "disp-tab-thumb"; thumb.src = "data:image/png;base64," + b.image_base64; thumb.draggable = false;
+      const thumb = html`<img class="disp-tab-thumb" draggable="false"/>` as HTMLImageElement;
+      thumb.src = "data:image/png;base64," + b.image_base64;
       btn.appendChild(thumb);
     });
     btn.appendChild(document.createTextNode(d.hor_res + "×" + d.ver_res));

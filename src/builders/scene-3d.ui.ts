@@ -9,7 +9,7 @@ const __css = css`
   .scene-label { @apply text-overlay1 uppercase text-[10px] font-medium; letter-spacing: .3px; }
   .scene-slider { @apply w-30 h-1 cursor-pointer; accent-color: var(--blue); }
   .scene-reset-btn, .scene-toggle-btn, .scene-fullscreen-btn {
-    @apply rounded py-0.5 px-2 text-[10px] text-overlay1 cursor-pointer bg-base border-s0 transition-theme;
+    @apply flex items-center gap-1 rounded py-0.5 px-2 text-[10px] text-overlay1 cursor-pointer bg-base border-s0 transition-theme;
   }
   .scene-reset-btn:hover, .scene-toggle-btn:hover, .scene-fullscreen-btn:hover { @apply border-blue text-blue; }
   .scene-spacer { @apply flex-1; }
@@ -99,21 +99,19 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const sw = sceneW * scale, sh = sceneH * scale;
 
   // Buffer layers (supports buf_1 + buf_2)
-  const bufEntries: { el: HTMLElement; label: string }[] = [];
+  const bufEntries: { el: HTMLElement; label: string; base64: string }[] = [];
   displays.forEach(d => {
     [d.buf_1, d.buf_2].forEach((b, i) => {
       if (!b?.image_base64) return;
       const layer = el("div", "scene-buf-layer");
       layer.style.width = sw + "px"; layer.style.height = sh + "px";
-      const img = document.createElement("img");
+      const img = html`<img draggable="false" style="width:100%;height:100%;object-fit:fill"/>` as HTMLImageElement;
       img.src = "data:image/png;base64," + b.image_base64;
-      img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "fill"; img.draggable = false;
       layer.appendChild(img);
-      const bufCanvas = document.createElement("canvas");
-      bufCanvas.className = "scene-buf-overlay"; bufCanvas.width = sw; bufCanvas.height = sh;
+      const bufCanvas = html`<canvas class="scene-buf-overlay" width="${sw}" height="${sh}"/>` as HTMLCanvasElement;
       layer.appendChild(bufCanvas);
       registerOverlay(d.addr + "-3d-buf" + (i + 1), { canvas: bufCanvas, w: d.hor_res, h: d.ver_res, objs: dispObjs[d.addr] || [] });
-      bufEntries.push({ el: layer, label: "Buf" + (i + 1) });
+      bufEntries.push({ el: layer, label: "Buf" + (i + 1), base64: b.image_base64 });
     });
   });
   const hasBuf = bufEntries.length > 0;
@@ -133,6 +131,9 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   controls.append(toggle3d, toggleBorders);
   bufEntries.forEach((be, i) => {
     const btn = makeToggle(be.label, true);
+    const thumb = html`<img draggable="false" style="height:1.2em;border-radius:2px;vertical-align:middle;image-rendering:pixelated"/>` as HTMLImageElement;
+    thumb.src = "data:image/png;base64," + be.base64;
+    btn.appendChild(thumb);
     btn.addEventListener("click", () => { be.el.style.display = btn.dataset.on === "1" ? "" : "none"; });
     bufToggles.push(btn);
     controls.appendChild(btn);
@@ -140,9 +141,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   controls.appendChild(toggleOrtho);
 
   const defaultSpread = maxDepth > 0 ? Math.round(300 / maxDepth) : 30;
-  const spreadSlider = document.createElement("input");
-  spreadSlider.type = "range"; spreadSlider.min = "0"; spreadSlider.max = String(Math.max(200, defaultSpread * 5));
-  spreadSlider.value = String(defaultSpread); spreadSlider.className = "scene-slider";
+  const spreadSlider = html`<input type="range" min="0" max="${Math.max(200, defaultSpread * 5)}" value="${defaultSpread}" class="scene-slider"/>` as HTMLInputElement;
   controls.appendChild(el("label", "scene-label", "Z Spread"));
   controls.appendChild(spreadSlider);
   const resetBtn = el("button", "scene-reset-btn", "Reset");
