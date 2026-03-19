@@ -1,7 +1,9 @@
-// 3D exploded object tree view
+// 3D exploded object tree view — Canvas 2D renderer
 import { el } from "../helpers";
 import { C, DEPTH_COLORS } from "../constants";
-import { registerHL, highlightObj, clearHighlight, selectObj, registerOverlay } from "../state";
+import { registerHL, highlightObj, clearHighlight, selectObj } from "../state";
+import { SceneRenderer } from "./scene-renderer";
+import type { SceneLayer, BufImage, Camera } from "./scene-renderer";
 import type { Display, ObjectTree, ObjNode } from "../types";
 
 const __css = css`
@@ -28,27 +30,17 @@ const __css = css`
   .scene-layer-btn.active { @apply bg-icon-bg-blue text-txt border-blue; }
   .scene-viewport {
     @apply relative flex-1 w-full min-h-[400px] overflow-hidden cursor-grab rounded-lg bg-crust;
-    perspective: 1200px; @apply border-s0; transform-origin: center center;
+    @apply border-s0;
   }
   .obj-3d-view:fullscreen { @apply bg-crust p-2 flex flex-col; }
   .obj-3d-view:fullscreen .scene-viewport { @apply min-h-0; }
-  .scene-3d { @apply absolute; transform-style: preserve-3d; top: 50%; left: 50%; }
-  .scene-layer {
-    @apply absolute rounded-[2px] cursor-pointer;
-    background: var(--scene-layer-bg); border: 1.5px solid;
-    transition: background .15s, box-shadow .15s;
-  }
-  .scene-buf-layer { @apply absolute overflow-hidden pointer-events-none rounded-[2px]; box-shadow: 0 0 0 1px var(--surface1); }
-  .scene-buf-layer img { @apply block img-pixel; }
-  .scene-buf-overlay { @apply absolute inset-0 w-full h-full pointer-events-none; }
-  .scene-layer.hl-active { background: var(--scene-layer-hover-bg); box-shadow: var(--scene-layer-hover-shadow); z-index: 10; }
-  .obj-node.hl-active > summary { @apply bg-nav-active-bg text-blue rounded; }
+  .scene-canvas { @apply block w-full h-full; }
   .scene-tooltip {
     @apply hidden absolute z-50 whitespace-nowrap pointer-events-none rounded-md px-2 py-1 font-mono text-[10px] text-txt bg-base border-s0; box-shadow: 0 4px 12px #0000004d;
   }
 `;
 
-interface Layer {
+interface LayerData {
   addr: string; class_name: string;
   x1: number; y1: number; x2: number; y2: number;
   depth: number; localDepth: number;
@@ -56,7 +48,7 @@ interface Layer {
 }
 
 function flattenLayers(trees: ObjectTree[]) {
-  const layers: Layer[] = [];
+  const layers: LayerData[] = [];
   const screenNames: string[] = [];
   const screenMaxLocal: Record<number, number> = {};
   let globalOffset = 0, sIdx = 0;
@@ -84,37 +76,41 @@ function flattenLayers(trees: ObjectTree[]) {
   return { layers, screenNames, screenMaxLocal };
 }
 
+// Resolve CSS variable to actual color value
+function resolveCSSColor(cssVar: string): string {
+  if (!cssVar.startsWith("var(")) return cssVar;
+  const name = cssVar.slice(4, -1);
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#89b4fa";
+}
+
 type DispObjs = Record<string, { addr: string; x1: number; y1: number; x2: number; y2: number }[]>;
 
 export function build3DScene(container: HTMLElement, trees: ObjectTree[], displays: Display[], dispObjs: DispObjs) {
   const { layers, screenNames, screenMaxLocal } = flattenLayers(trees);
   if (!layers.length) { container.appendChild(el("p", "empty", "No objects.")); return; }
 
-  // Scene bounds from display resolution
   let maxX = 0, maxY = 0, maxDepth = 0;
   displays.forEach(d => { maxX = Math.max(maxX, d.hor_res || 0); maxY = Math.max(maxY, d.ver_res || 0); });
   layers.forEach(l => { maxDepth = Math.max(maxDepth, l.depth); });
   const sceneW = maxX || 1, sceneH = maxY || 1;
-  const scale = C.VIEWPORT_SIZE / Math.max(sceneW, sceneH);
-  const sw = sceneW * scale, sh = sceneH * scale;
 
-  // Buffer layers (supports buf_1 + buf_2)
-  const bufEntries: { el: HTMLElement; label: string; base64: string }[] = [];
+  // Buffer images
+  const bufImages: { img: HTMLImageElement; label: string; base64: string }[] = [];
   displays.forEach(d => {
     [d.buf_1, d.buf_2].forEach((b, i) => {
       if (!b?.image_base64) return;
-      const layer = el("div", "scene-buf-layer");
-      layer.style.width = sw + "px"; layer.style.height = sh + "px";
-      const img = html`<img draggable="false" style="width:100%;height:100%;object-fit:fill"/>` as HTMLImageElement;
+      const img = new Image();
       img.src = "data:image/png;base64," + b.image_base64;
-      layer.appendChild(img);
-      const bufCanvas = html`<canvas class="scene-buf-overlay" width="${sw}" height="${sh}"/>` as HTMLCanvasElement;
-      layer.appendChild(bufCanvas);
-      registerOverlay(d.addr + "-3d-buf" + (i + 1), { canvas: bufCanvas, w: d.hor_res, h: d.ver_res, objs: dispObjs[d.addr] || [] });
-      bufEntries.push({ el: layer, label: "Buf" + (i + 1), base64: b.image_base64 });
+      bufImages.push({ img, label: "Buf" + (i + 1), base64: b.image_base64 });
     });
   });
-  const hasBuf = bufEntries.length > 0;
+
+  // Camera state
+  const cam: Camera = {
+    rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y,
+    zoom: 1, panX: 0, panY: 0,
+    perspective: C.PERSPECTIVE_DISTANCE, ortho: false,
+  };
 
   // Controls
   const makeToggle = (label: string, on: boolean) => {
@@ -129,12 +125,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const bufToggles: HTMLButtonElement[] = [];
   const toggleOrtho = makeToggle("Ortho", false);
   controls.append(toggle3d, toggleBorders);
-  bufEntries.forEach((be, i) => {
-    const btn = makeToggle(be.label, true);
+  bufImages.forEach(bi => {
+    const btn = makeToggle(bi.label, true);
     const thumb = html`<img draggable="false" style="height:1.2em;border-radius:2px;vertical-align:middle;image-rendering:pixelated"/>` as HTMLImageElement;
-    thumb.src = "data:image/png;base64," + be.base64;
+    thumb.src = "data:image/png;base64," + bi.base64;
     btn.appendChild(thumb);
-    btn.addEventListener("click", () => { be.el.style.display = btn.dataset.on === "1" ? "" : "none"; });
     bufToggles.push(btn);
     controls.appendChild(btn);
   });
@@ -165,17 +160,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       if (!document.fullscreenElement) container.requestFullscreen();
       container.classList.add("screensaver");
       const t0 = performance.now();
-      const baseRx = st.rotX, baseRy = st.rotY, baseSp = Number(spreadSlider.value);
+      const baseRx = cam.rotX, baseRy = cam.rotY, baseSp = Number(spreadSlider.value);
       const tick = (now: number) => {
         const t = (now - t0) / 1000;
-        // Smooth non-linear wandering via layered sine waves
-        const rx = baseRx + 12 * Math.sin(t * 0.065) + 5 * Math.sin(t * 0.155);
-        const ry = baseRy + 8 * Math.sin(t * 0.085) + 2 * Math.sin(t * 0.205);
-        const sp = Math.max(0, baseSp + baseSp * 0.3 * Math.sin(t * 0.055) + baseSp * 0.15 * Math.sin(t * 0.145));
-        st.rotX = Math.max(-90, Math.min(90, rx));
-        st.rotY = ry;
-        applyRot();
-        applyVis(sp);
+        cam.rotX = Math.max(-90, Math.min(90, baseRx + 12 * Math.sin(t * 0.065) + 5 * Math.sin(t * 0.155)));
+        cam.rotY = baseRy + 8 * Math.sin(t * 0.085) + 2 * Math.sin(t * 0.205);
+        updateDepths(Math.max(0, baseSp + baseSp * 0.3 * Math.sin(t * 0.055) + baseSp * 0.15 * Math.sin(t * 0.145)));
+        renderer.markDirty();
         ssAnimId = requestAnimationFrame(tick);
       };
       ssAnimId = requestAnimationFrame(tick);
@@ -185,7 +176,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       if (!container.classList.contains("screensaver")) return;
       container.classList.remove("screensaver");
       if (ssAnimId) { cancelAnimationFrame(ssAnimId); ssAnimId = null; }
-      applyRot(); applyVis();
+      renderer.markDirty();
     };
 
     const resetSSTimer = () => {
@@ -218,13 +209,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       layerVisible.push(on);
       const btn = el("button", "scene-layer-btn" + (on ? " active" : ""), name);
       btn.style.borderBottomColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
-      btn.onclick = () => { layerVisible[i] = !layerVisible[i]; btn.classList.toggle("active", layerVisible[i]); applyVis(); };
+      btn.onclick = () => { layerVisible[i] = !layerVisible[i]; btn.classList.toggle("active", layerVisible[i]); updateVisibility(); };
       btn.ondblclick = e => {
         e.preventDefault();
         const solo = layerVisible.every((v, j) => j === i ? v : !v);
         if (solo) layerVisible.fill(true); else { layerVisible.fill(false); layerVisible[i] = true; }
         layerBtns.forEach((b, j) => b.classList.toggle("active", layerVisible[j]));
-        applyVis();
+        updateVisibility();
       };
       layerBtns.push(btn); bar.appendChild(btn);
     });
@@ -235,126 +226,144 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const tooltip = el("div", "scene-tooltip");
   container.appendChild(tooltip);
 
-  // Viewport & scene
+  // Viewport & canvas
   const viewport = el("div", "scene-viewport");
-  const scene = el("div", "scene-3d");
-  scene.style.width = sw + "px"; scene.style.height = sh + "px";
-  viewport.appendChild(scene);
+  const canvas = html`<canvas class="scene-canvas"/>` as HTMLCanvasElement;
+  viewport.appendChild(canvas);
   container.appendChild(viewport);
-  bufEntries.forEach(be => scene.appendChild(be.el));
 
-  // Layer elements
-  const layerEls: { el: HTMLElement; depth: number; localDepth: number; screenIdx: number }[] = [];
-  layers.forEach(l => {
-    const div = el("div", "scene-layer");
-    const w = (l.x2 - l.x1) * scale, h = (l.y2 - l.y1) * scale;
-    div.style.width = Math.max(2, w) + "px"; div.style.height = Math.max(2, h) + "px";
-    div.style.left = (l.x1 * scale) + "px"; div.style.top = (l.y1 * scale) + "px";
-    div.style.borderColor = DEPTH_COLORS[l.depth % DEPTH_COLORS.length];
-    div.dataset.depth = String(l.depth); div.dataset.addr = l.addr || "";
-    div.dataset.screenIdx = String(l.screenIdx);
-    div.dataset.info = l.class_name + "@" + (l.addr || "?") + " [" + l.x1 + "," + l.y1 + "," + l.x2 + "," + l.y2 + "] children=" + l.child_count + " styles=" + l.style_count;
-    if (l.addr) registerHL(l.addr, div);
-    layerEls.push({ el: div, depth: l.depth, localDepth: l.localDepth, screenIdx: l.screenIdx });
-    scene.appendChild(div);
-  });
+  // Create renderer
+  const renderer = new SceneRenderer(canvas, cam);
+  renderer.setSceneSize(sceneW, sceneH);
 
-  // Interaction state
-  const st: { rotX: number; rotY: number; dragging: false | "rotate" | "pan"; lastX: number; lastY: number; is3d: boolean; zoom: number; panX: number; panY: number } = { rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, dragging: false, lastX: 0, lastY: 0, is3d: true, zoom: 1, panX: 0, panY: 0 };
-  let savedRotX = C.DEFAULT_ROT_X as number, savedRotY = C.DEFAULT_ROT_Y as number;
-  let animId: number | null = null;
+  // Build scene layers
+  const sceneLayers: SceneLayer[] = layers.map(l => ({
+    x: l.x1, y: l.y1,
+    w: Math.max(2, l.x2 - l.x1), h: Math.max(2, l.y2 - l.y1),
+    depth: 0,
+    borderColor: resolveCSSColor(DEPTH_COLORS[l.depth % DEPTH_COLORS.length]),
+    addr: l.addr,
+    info: l.class_name + "@" + (l.addr || "?") + " [" + l.x1 + "," + l.y1 + "," + l.x2 + "," + l.y2 + "] children=" + l.child_count + " styles=" + l.style_count,
+    screenIdx: l.screenIdx,
+    visible: true,
+  }));
 
-  function applyVis(spreadOv?: number) {
+  // Build buf entries for renderer
+  const sceneBufs: BufImage[] = bufImages.map(bi => ({ img: bi.img, depth: 0, visible: true }));
+  sceneBufs.forEach(b => renderer.addBuf(b));
+  renderer.setLayers(sceneLayers);
+
+  // Depth + visibility update
+  function updateDepths(spreadOv?: number) {
     const bordersOn = toggleBorders.dataset.on === "1";
     const screenOffset: Record<number, number> = {};
     let off = 0;
     for (let i = 0; i < screenNames.length; i++) {
       if (layerVisible[i]) { screenOffset[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
     }
-    const spread = spreadOv ?? (st.is3d ? Number(spreadSlider.value) : 0);
-    layerEls.forEach(le => {
-      if (!bordersOn || !layerVisible[le.screenIdx]) { le.el.style.display = "none"; return; }
-      le.el.style.display = "";
-      le.el.style.transform = "translateZ(" + ((screenOffset[le.screenIdx] + le.localDepth) * spread) + "px)";
+    const spread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0);
+    layers.forEach((l, idx) => {
+      const sl = sceneLayers[idx];
+      sl.visible = bordersOn && layerVisible[l.screenIdx];
+      sl.depth = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : 0) * spread;
     });
-    bufEntries.forEach(be => { be.el.style.transform = "translateZ(" + (-spread * 1.5) + "px)"; });
+    sceneBufs.forEach(b => { b.depth = -spread * 0.5; });
+    renderer.markDirty();
   }
 
-  function applyRot(ov?: { rotX: number; rotY: number }) {
-    const ortho = toggleOrtho.dataset.on === "1";
-    viewport.style.perspective = ortho ? "none" : C.PERSPECTIVE_DISTANCE + "px";
-    const rx = ov ? ov.rotX : st.rotX, ry = ov ? ov.rotY : st.rotY;
-    const base = "translate(-50%,-50%) scale(" + st.zoom + ") translate(" + (st.panX / st.zoom) + "px," + (st.panY / st.zoom) + "px)";
-    scene.style.transform = (st.is3d || ov) ? base + " rotateX(" + rx + "deg) rotateY(" + ry + "deg)" : base;
+  function updateVisibility() {
+    bufToggles.forEach((btn, i) => { sceneBufs[i].visible = btn.dataset.on === "1"; });
+    updateDepths();
   }
+
+  // 3D toggle animation
+  let is3d = true;
+  let savedRotX = C.DEFAULT_ROT_X as number, savedRotY = C.DEFAULT_ROT_Y as number;
+  let animId: number | null = null;
 
   function ease(t: number) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
   function animateToggle(entering: boolean) {
     if (animId) { cancelAnimationFrame(animId); animId = null; }
-    if (!entering) { savedRotX = st.rotX; savedRotY = st.rotY; }
+    if (!entering) { savedRotX = cam.rotX; savedRotY = cam.rotY; }
     const [fromRx, fromRy, toRx, toRy] = entering ? [0, 0, savedRotX, savedRotY] : [savedRotX, savedRotY, 0, 0];
     const targetSpread = Number(spreadSlider.value);
     const t0 = performance.now();
     function tick(now: number) {
       const t = ease(Math.min((now - t0) / C.ANIM_DURATION, 1));
-      applyRot({ rotX: fromRx + (toRx - fromRx) * t, rotY: fromRy + (toRy - fromRy) * t });
-      applyVis(entering ? targetSpread * t : targetSpread * (1 - t));
+      cam.rotX = fromRx + (toRx - fromRx) * t;
+      cam.rotY = fromRy + (toRy - fromRy) * t;
+      updateDepths(entering ? targetSpread * t : targetSpread * (1 - t));
       if (now - t0 < C.ANIM_DURATION) animId = requestAnimationFrame(tick);
-      else { animId = null; st.rotX = toRx; st.rotY = toRy; applyRot(); applyVis(); }
+      else { animId = null; cam.rotX = toRx; cam.rotY = toRy; updateDepths(); }
     }
     animId = requestAnimationFrame(tick);
   }
 
-  applyVis(); applyRot();
+  updateDepths();
 
   // Event bindings
-  spreadSlider.oninput = () => applyVis();
-  toggle3d.addEventListener("click", () => { st.is3d = toggle3d.dataset.on === "1"; spreadSlider.disabled = !st.is3d; animateToggle(st.is3d); });
-  toggleOrtho.addEventListener("click", () => applyRot());
-  toggleBorders.addEventListener("click", () => applyVis());
-  // (buf toggle events already bound above)
+  spreadSlider.oninput = () => updateDepths();
+  toggle3d.addEventListener("click", () => { is3d = toggle3d.dataset.on === "1"; spreadSlider.disabled = !is3d; animateToggle(is3d); });
+  toggleOrtho.addEventListener("click", () => { cam.ortho = toggleOrtho.dataset.on === "1"; renderer.markDirty(); });
+  toggleBorders.addEventListener("click", () => updateVisibility());
+  bufToggles.forEach(btn => btn.addEventListener("click", () => updateVisibility()));
 
   // Mouse interaction
+  let dragging: false | "rotate" | "pan" = false;
+  let lastX = 0, lastY = 0;
+
   viewport.onmousedown = e => {
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) { e.preventDefault(); st.dragging = "pan"; st.lastX = e.clientX; st.lastY = e.clientY; viewport.style.cursor = "move"; }
-    else if (e.button === 0 && st.is3d) { st.dragging = "rotate"; st.lastX = e.clientX; st.lastY = e.clientY; viewport.style.cursor = "grabbing"; }
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) { e.preventDefault(); dragging = "pan"; lastX = e.clientX; lastY = e.clientY; viewport.style.cursor = "move"; }
+    else if (e.button === 0 && is3d) { dragging = "rotate"; lastX = e.clientX; lastY = e.clientY; viewport.style.cursor = "grabbing"; }
   };
   window.addEventListener("mousemove", e => {
-    if (!st.dragging) return;
-    const dx = e.clientX - st.lastX, dy = e.clientY - st.lastY;
-    st.lastX = e.clientX; st.lastY = e.clientY;
-    if (st.dragging === "rotate") { st.rotY += dx * C.ROTATION_SENSITIVITY; st.rotX = Math.max(-90, Math.min(90, st.rotX - dy * C.ROTATION_SENSITIVITY)); }
-    else { st.panX += dx / st.zoom; st.panY += dy / st.zoom; }
-    applyRot();
+    if (!dragging) {
+      // Hover picking
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const hit = renderer.pick(mx, my);
+      if (hit) {
+        tooltip.textContent = hit.layer.info;
+        tooltip.style.display = "block";
+        const cr = container.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - cr.left + 12) + "px";
+        tooltip.style.top = (e.clientY - cr.top - 8) + "px";
+        renderer.setHighlight(hit.layer.addr);
+        if (hit.layer.addr) highlightObj(hit.layer.addr);
+      } else {
+        tooltip.style.display = "none";
+        renderer.setHighlight(null);
+        clearHighlight();
+      }
+      return;
+    }
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    if (dragging === "rotate") {
+      cam.rotY += dx * C.ROTATION_SENSITIVITY;
+      cam.rotX = Math.max(-90, Math.min(90, cam.rotX - dy * C.ROTATION_SENSITIVITY));
+    } else {
+      cam.panX += dx / cam.zoom;
+      cam.panY += dy / cam.zoom;
+    }
+    renderer.markDirty();
   });
-  window.addEventListener("mouseup", () => { st.dragging = false; viewport.style.cursor = "grab"; });
+  window.addEventListener("mouseup", () => { dragging = false; viewport.style.cursor = "grab"; });
   viewport.addEventListener("wheel", e => {
     e.preventDefault();
-    if (e.ctrlKey) { st.zoom = Math.max(C.MIN_ZOOM, Math.min(C.MAX_ZOOM, st.zoom * (1 - e.deltaY * C.ZOOM_SENSITIVITY))); }
-    else { st.panX -= e.deltaX / st.zoom; st.panY -= e.deltaY / st.zoom; }
-    applyRot();
+    if (e.ctrlKey) { cam.zoom = Math.max(C.MIN_ZOOM, Math.min(C.MAX_ZOOM, cam.zoom * (1 - e.deltaY * C.ZOOM_SENSITIVITY))); }
+    else { cam.panX -= e.deltaX / cam.zoom; cam.panY -= e.deltaY / cam.zoom; }
+    renderer.markDirty();
   }, { passive: false });
 
-  // Hover & click
-  scene.addEventListener("mouseover", e => {
-    const t = (e.target as HTMLElement).closest(".scene-layer") as HTMLElement | null;
-    if (t) { tooltip.textContent = t.dataset.info || ""; tooltip.style.display = "block"; if (t.dataset.addr) highlightObj(t.dataset.addr); }
-  });
-  scene.addEventListener("mouseout", e => {
-    if ((e.target as HTMLElement).closest(".scene-layer")) { tooltip.style.display = "none"; clearHighlight(); }
-  });
-  scene.addEventListener("mousemove", e => {
-    if (tooltip.style.display === "block") {
-      const r = container.getBoundingClientRect();
-      tooltip.style.left = (e.clientX - r.left + 12) + "px"; tooltip.style.top = (e.clientY - r.top - 8) + "px";
-    }
-  });
-  scene.addEventListener("click", e => {
-    const t = (e.target as HTMLElement).closest(".scene-layer") as HTMLElement | null;
-    if (t?.dataset.addr) {
-      selectObj(t.dataset.addr);
-      const target = document.getElementById("obj-" + t.dataset.addr);
+  // Click
+  canvas.addEventListener("click", e => {
+    const rect = canvas.getBoundingClientRect();
+    const hit = renderer.pick(e.clientX - rect.left, e.clientY - rect.top);
+    if (hit?.layer.addr) {
+      selectObj(hit.layer.addr);
+      const target = document.getElementById("obj-" + hit.layer.addr);
       if (target) {
         let p = target.parentElement;
         while (p) { if (p.tagName === "DETAILS") (p as HTMLDetailsElement).open = true; p = p.parentElement; }
@@ -366,15 +375,15 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   // Reset
   resetBtn.onclick = () => {
-    st.rotX = C.DEFAULT_ROT_X; st.rotY = C.DEFAULT_ROT_Y; st.zoom = 1; st.panX = 0; st.panY = 0; st.is3d = true;
+    cam.rotX = C.DEFAULT_ROT_X; cam.rotY = C.DEFAULT_ROT_Y; cam.zoom = 1; cam.panX = 0; cam.panY = 0; cam.ortho = false;
+    is3d = true;
     spreadSlider.value = String(defaultSpread); spreadSlider.disabled = false;
     toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
     toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
     bufToggles.forEach(btn => { btn.dataset.on = "1"; btn.classList.add("active"); });
-    bufEntries.forEach(be => { be.el.style.display = ""; });
     toggleOrtho.dataset.on = "0"; toggleOrtho.classList.remove("active");
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
-    applyRot(); applyVis();
+    updateVisibility();
   };
 }
