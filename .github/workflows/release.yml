@@ -1,0 +1,35 @@
+name: Release Artifacts
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Build with screensaver
+        run: bun run build
+      - run: |
+          mv dist/uinspy.html dist/uinspy-screensaver.html
+          mv dist/uinspy.min.html dist/uinspy-screensaver.min.html
+
+      - name: Build without screensaver
+        run: UINSPY_NO_SCREENSAVER=1 bun run build
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dist/uinspy.html \
+            dist/uinspy.min.html \
+            dist/uinspy-screensaver.html \
+            dist/uinspy-screensaver.min.html
