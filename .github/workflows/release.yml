@@ -15,14 +15,26 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
+      - name: Build with logo + screensaver
+        run: UINSPY_LOGO_FAVICON=1 bun run build
+      - run: |
+          mkdir -p artifacts
+          cp dist/uinspy.html artifacts/uinspy-logo-screensaver.html
+          cp dist/uinspy.min.html artifacts/uinspy-logo-screensaver.min.html
+
+      - name: Build with logo
+        run: UINSPY_LOGO_FAVICON=1 UINSPY_NO_SCREENSAVER=1 bun run build
+      - run: |
+          cp dist/uinspy.html artifacts/uinspy-logo.html
+          cp dist/uinspy.min.html artifacts/uinspy-logo.min.html
+
       - name: Build with screensaver
         run: bun run build
       - run: |
-          mkdir -p artifacts
           cp dist/uinspy.html artifacts/uinspy-screensaver.html
           cp dist/uinspy.min.html artifacts/uinspy-screensaver.min.html
 
-      - name: Build without screensaver
+      - name: Build standard
         run: UINSPY_NO_SCREENSAVER=1 bun run build
       - run: |
           cp dist/uinspy.html artifacts/uinspy.html
@@ -31,9 +43,4 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            artifacts/uinspy.html \
-            artifacts/uinspy.min.html \
-            artifacts/uinspy-screensaver.html \
-            artifacts/uinspy-screensaver.min.html
+        run: gh release upload "${{ github.event.release.tag_name }}" artifacts/*

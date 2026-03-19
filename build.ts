@@ -51,7 +51,8 @@ const cssMin = optimize(cssFull, { minify: true }).code;
 const jsMin = await Bun.file(`${tmpDir}/min/app.js`).text();
 const jsFull = await Bun.file(`${tmpDir}/full/app.js`).text();
 
-const favicon = await Bun.file("./public/favicon.svg").text();
+const faviconPath = process.env.UINSPY_LOGO_FAVICON ? "./static/uinspy.svg" : "./static/favicon.svg";
+const favicon = await Bun.file(faviconPath).text();
 const faviconB64 = Buffer.from(favicon).toString("base64");
 
 const indexHtml = await Bun.file("./index.html").text();
