@@ -23,8 +23,9 @@ const __css = css`
   .detail-class { @apply text-blue text-sm font-bold; }
   .detail-section { @apply mb-2.5; }
   .detail-section-title { @apply uppercase text-overlay0 text-[10px] font-bold mb-1; letter-spacing: .5px; }
-  .detail-coord-grid { @apply grid font-mono text-[11px]; grid-template-columns: auto 1fr auto 1fr auto 1fr; gap: 2px 8px; }
-  .detail-coord-label { @apply text-overlay1 font-semibold; }
+  .detail-coord-grid { @apply flex gap-3 font-mono text-[11px]; }
+  .detail-coord-group { @apply flex items-center gap-1.5 rounded px-2 py-1 bg-mantle border-s0; }
+  .detail-coord-label { @apply text-overlay1 text-[9px] font-semibold uppercase; }
   .detail-coord-val { @apply text-txt; }
   .detail-style-card { @apply rounded-lg mb-1 p-[6px_8px] bg-mantle border-s0; }
   .detail-style-hdr { @apply text-mauve text-[10px] font-semibold mb-1; }
@@ -72,12 +73,16 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
   const coordSec = html`<div class="detail-section">
     <div class="detail-section-title">Coordinates</div>
     <div class="detail-coord-grid">
-      <span class="detail-coord-label">x1</span><span class="detail-coord-val">${String(c.x1 || 0)}</span>
-      <span class="detail-coord-label">y1</span><span class="detail-coord-val">${String(c.y1 || 0)}</span>
-      <span class="detail-coord-label">x2</span><span class="detail-coord-val">${String(c.x2 || 0)}</span>
-      <span class="detail-coord-label">y2</span><span class="detail-coord-val">${String(c.y2 || 0)}</span>
-      <span class="detail-coord-label">w</span><span class="detail-coord-val">${String(w)}</span>
-      <span class="detail-coord-label">h</span><span class="detail-coord-val">${String(h)}</span>
+      <div class="detail-coord-group">
+        <span class="detail-coord-label">pos</span>
+        <span class="detail-coord-val">${String(c.x1 || 0)}, ${String(c.y1 || 0)}</span>
+        <span class="detail-coord-label">→</span>
+        <span class="detail-coord-val">${String(c.x2 || 0)}, ${String(c.y2 || 0)}</span>
+      </div>
+      <div class="detail-coord-group">
+        <span class="detail-coord-label">size</span>
+        <span class="detail-coord-val">${String(w)} × ${String(h)}</span>
+      </div>
     </div>
   </div>`;
   panel.appendChild(coordSec);
