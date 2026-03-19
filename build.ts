@@ -19,6 +19,7 @@ const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; ide
   define: {
     __UINSPY_VERSION__: JSON.stringify(pkg.version),
     __UINSPY_BUILD_TIME__: JSON.stringify(buildTime),
+    __UINSPY_SCREENSAVER__: process.env.UINSPY_NO_SCREENSAVER ? "false" : "true",
   },
 });
 

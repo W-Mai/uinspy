@@ -13,6 +13,10 @@ const __css = css`
   }
   .scene-reset-btn:hover, .scene-toggle-btn:hover, .scene-fullscreen-btn:hover { @apply border-blue text-blue; }
   .scene-spacer { @apply flex-1; }
+  .obj-3d-view.screensaver .scene-controls,
+  .obj-3d-view.screensaver .scene-layer-bar,
+  .obj-3d-view.screensaver .scene-tooltip { @apply !hidden; }
+  .obj-3d-view.screensaver .scene-viewport { @apply min-h-0 rounded-none border-0; }
   .scene-toggle-btn { @apply font-semibold; }
   .scene-toggle-btn.active { @apply bg-icon-bg-blue text-blue border-blue; }
   .scene-layer-bar { @apply flex flex-wrap gap-1 py-1; }
@@ -144,7 +148,60 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     if (document.fullscreenElement) document.exitFullscreen();
     else container.requestFullscreen();
   };
-  controls.append(resetBtn, spacer, fsBtn);
+  controls.append(resetBtn, spacer);
+
+  if (__UINSPY_SCREENSAVER__) {
+    const ssBtn = el("button", "scene-fullscreen-btn", "🎬");
+    ssBtn.title = "Screensaver";
+    let ssAnimId: number | null = null;
+    let ssTimer: ReturnType<typeof setTimeout> | null = null;
+    const SS_IDLE = 30000;
+
+    const enterSS = () => {
+      if (!document.fullscreenElement) container.requestFullscreen();
+      container.classList.add("screensaver");
+      const t0 = performance.now();
+      const baseRx = st.rotX, baseRy = st.rotY, baseSp = Number(spreadSlider.value);
+      const tick = (now: number) => {
+        const t = (now - t0) / 1000;
+        // Smooth non-linear wandering via layered sine waves
+        const rx = baseRx + 12 * Math.sin(t * 0.065) + 5 * Math.sin(t * 0.155);
+        const ry = baseRy + 8 * Math.sin(t * 0.085) + 2 * Math.sin(t * 0.205);
+        const sp = Math.max(0, baseSp + baseSp * 0.3 * Math.sin(t * 0.055) + baseSp * 0.15 * Math.sin(t * 0.145));
+        st.rotX = Math.max(-90, Math.min(90, rx));
+        st.rotY = ry;
+        applyRot();
+        applyVis(sp);
+        ssAnimId = requestAnimationFrame(tick);
+      };
+      ssAnimId = requestAnimationFrame(tick);
+    };
+
+    const exitSS = () => {
+      if (!container.classList.contains("screensaver")) return;
+      container.classList.remove("screensaver");
+      if (ssAnimId) { cancelAnimationFrame(ssAnimId); ssAnimId = null; }
+      applyRot(); applyVis();
+    };
+
+    const resetSSTimer = () => {
+      if (ssTimer) clearTimeout(ssTimer);
+      ssTimer = document.fullscreenElement ? setTimeout(enterSS, SS_IDLE) : null;
+    };
+
+    ssBtn.onclick = enterSS;
+    container.addEventListener("mousemove", () => { exitSS(); resetSSTimer(); });
+    container.addEventListener("mousedown", () => { exitSS(); resetSSTimer(); });
+    container.addEventListener("keydown", () => { exitSS(); resetSSTimer(); });
+    container.addEventListener("wheel", () => { exitSS(); resetSSTimer(); });
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement) { exitSS(); if (ssTimer) { clearTimeout(ssTimer); ssTimer = null; } }
+      else resetSSTimer();
+    });
+    controls.appendChild(ssBtn);
+  }
+
+  controls.appendChild(fsBtn);
   container.appendChild(controls);
 
   // Layer filter bar
