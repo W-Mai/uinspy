@@ -56,7 +56,7 @@ export class ThreeRenderer implements ISceneRenderer {
     const aspect = rect.width / rect.height || 1;
     if (this.cam.ortho) {
       const h = 300 / this.cam.zoom;
-      return new THREE.OrthographicCamera(-h * aspect, h * aspect, h, -h, 0.1, 10000);
+      return new THREE.OrthographicCamera(-h * aspect, h * aspect, h, -h, -10000, 10000);
     }
     return new THREE.PerspectiveCamera(45, aspect, 0.1, 10000);
   }
