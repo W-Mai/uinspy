@@ -154,9 +154,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     ssBtn.title = "Screensaver";
     let ssAnimId: number | null = null;
     let ssTimer: ReturnType<typeof setTimeout> | null = null;
+    let manualSS = false; // true = user clicked button, only ESC exits
     const SS_IDLE = 30000;
 
-    const enterSS = () => {
+    const enterSS = (manual = false) => {
+      manualSS = manual;
       if (!document.fullscreenElement) container.requestFullscreen();
       container.classList.add("screensaver");
       const t0 = performance.now();
@@ -176,19 +178,21 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       if (!container.classList.contains("screensaver")) return;
       container.classList.remove("screensaver");
       if (ssAnimId) { cancelAnimationFrame(ssAnimId); ssAnimId = null; }
+      manualSS = false;
       renderer.markDirty();
     };
 
     const resetSSTimer = () => {
       if (ssTimer) clearTimeout(ssTimer);
-      ssTimer = document.fullscreenElement ? setTimeout(enterSS, SS_IDLE) : null;
+      ssTimer = document.fullscreenElement ? setTimeout(() => enterSS(false), SS_IDLE) : null;
     };
 
-    ssBtn.onclick = enterSS;
-    container.addEventListener("mousemove", () => { exitSS(); resetSSTimer(); });
-    container.addEventListener("mousedown", () => { exitSS(); resetSSTimer(); });
-    container.addEventListener("keydown", () => { exitSS(); resetSSTimer(); });
-    container.addEventListener("wheel", () => { exitSS(); resetSSTimer(); });
+    ssBtn.onclick = () => enterSS(true);
+    // Auto screensaver: mouse/keyboard exits; manual: only ESC (fullscreenchange) exits
+    container.addEventListener("mousemove", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
+    container.addEventListener("mousedown", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
+    container.addEventListener("keydown", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
+    container.addEventListener("wheel", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement) {
         // Force stop screensaver — ESC doesn't trigger keydown
