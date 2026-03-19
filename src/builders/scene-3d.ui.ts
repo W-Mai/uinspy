@@ -38,6 +38,38 @@ const __css = css`
   .scene-tooltip {
     @apply hidden absolute z-50 whitespace-nowrap pointer-events-none rounded-md px-2 py-1 font-mono text-[10px] text-txt bg-base border-s0; box-shadow: 0 4px 12px #0000004d;
   }
+  .viewcube-wrap {
+    @apply absolute z-40; top: 4px; right: 4px; width: 100px; height: 100px;
+    perspective: 250px;
+  }
+  .obj-3d-view.screensaver .viewcube-wrap { @apply !hidden; }
+  .viewcube {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.01s;
+  }
+  .vc-face, .vc-edge, .vc-corner {
+    position: absolute; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font: 600 8px/1 system-ui; color: var(--overlay1);
+    backface-visibility: visible;
+    transition: background 0.15s, color 0.15s;
+  }
+  .vc-face {
+    width: 50px; height: 50px; left: 25px; top: 25px;
+    background: var(--surface0); border: 1px solid var(--surface1);
+    opacity: 0.85;
+  }
+  .vc-face:hover { background: var(--blue); color: var(--base); opacity: 1; }
+  .vc-edge {
+    background: var(--surface1); opacity: 0.6;
+  }
+  .vc-edge:hover { background: var(--blue); opacity: 1; }
+  .vc-corner {
+    width: 15px; height: 15px;
+    background: var(--surface1); opacity: 0.5; border-radius: 2px;
+  }
+  .vc-corner:hover { background: var(--blue); opacity: 1; }
 `;
 
 interface LayerData {
@@ -240,6 +272,84 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const viewport = el("div", "scene-viewport");
   const canvas = html`<canvas class="scene-canvas"/>` as HTMLCanvasElement;
   viewport.appendChild(canvas);
+
+  // ViewCube — CSS 3D orientation gizmo
+  const S = 40; // half-size of cube in px
+  type VCPreset = { rotX: number; rotY: number; label?: string };
+  const vcFaces: { transform: string; preset: VCPreset; label: string; w: number; h: number }[] = [
+    { transform: `translateZ(${S}px)`,                          preset: { rotX: 0, rotY: 0 },     label: "Front", w: 50, h: 50 },
+    { transform: `rotateY(180deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 180 },   label: "Back",  w: 50, h: 50 },
+    { transform: `rotateY(90deg) translateZ(${S}px)`,           preset: { rotX: 0, rotY: -90 },   label: "Right", w: 50, h: 50 },
+    { transform: `rotateY(-90deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 90 },    label: "Left",  w: 50, h: 50 },
+    { transform: `rotateX(90deg) translateZ(${S}px)`,           preset: { rotX: -90, rotY: 0 },   label: "Top",   w: 50, h: 50 },
+    { transform: `rotateX(-90deg) translateZ(${S}px)`,          preset: { rotX: 90, rotY: 0 },    label: "Bot",   w: 50, h: 50 },
+  ];
+  // Edges: 12 edges connecting faces
+  const E = S; // edge half-length
+  const ET = 8; // edge thickness
+  const vcEdges: { transform: string; preset: VCPreset; w: number; h: number }[] = [
+    // Front face edges (4)
+    { transform: `translateY(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: -45, rotY: 0 },    w: 50, h: ET },
+    { transform: `translateY(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 45, rotY: 0 },     w: 50, h: ET },
+    { transform: `translateX(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: 0, rotY: 45 },     w: ET, h: 50 },
+    { transform: `translateX(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 0, rotY: -45 },    w: ET, h: 50 },
+    // Back face edges (4)
+    { transform: `translateY(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: -45, rotY: 180 },  w: 50, h: ET },
+    { transform: `translateY(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 45, rotY: 180 },   w: 50, h: ET },
+    { transform: `translateX(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: 0, rotY: 135 },    w: ET, h: 50 },
+    { transform: `translateX(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 0, rotY: -135 },   w: ET, h: 50 },
+    // Connecting edges (4, horizontal between front/back)
+    { transform: `translateX(-${E}px) translateY(-${E}px) rotateY(90deg)`,                  preset: { rotX: -45, rotY: 90 },   w: 50, h: ET },
+    { transform: `translateX(${E}px) translateY(-${E}px) rotateY(90deg)`,                   preset: { rotX: -45, rotY: -90 },  w: 50, h: ET },
+    { transform: `translateX(-${E}px) translateY(${E}px) rotateY(90deg)`,                   preset: { rotX: 45, rotY: 90 },    w: 50, h: ET },
+    { transform: `translateX(${E}px) translateY(${E}px) rotateY(90deg)`,                    preset: { rotX: 45, rotY: -90 },   w: 50, h: ET },
+  ];
+  // Corners: 8 vertices
+  const vcCorners: { transform: string; preset: VCPreset }[] = [
+    { transform: `translate3d(-${E}px,-${E}px,${E}px)`,   preset: { rotX: -45, rotY: 45 } },
+    { transform: `translate3d(${E}px,-${E}px,${E}px)`,    preset: { rotX: -45, rotY: -45 } },
+    { transform: `translate3d(-${E}px,${E}px,${E}px)`,    preset: { rotX: 45, rotY: 45 } },
+    { transform: `translate3d(${E}px,${E}px,${E}px)`,     preset: { rotX: 45, rotY: -45 } },
+    { transform: `translate3d(-${E}px,-${E}px,-${E}px)`,  preset: { rotX: -45, rotY: 135 } },
+    { transform: `translate3d(${E}px,-${E}px,-${E}px)`,   preset: { rotX: -45, rotY: -135 } },
+    { transform: `translate3d(-${E}px,${E}px,-${E}px)`,   preset: { rotX: 45, rotY: 135 } },
+    { transform: `translate3d(${E}px,${E}px,-${E}px)`,    preset: { rotX: 45, rotY: -135 } },
+  ];
+
+  const vcWrap = el("div", "viewcube-wrap");
+  const vcCube = el("div", "viewcube");
+  function vcClick(p: VCPreset) {
+    animateTo({ rotX: p.rotX, rotY: p.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp });
+  }
+  for (const f of vcFaces) {
+    const d = el("div", "vc-face");
+    d.textContent = f.label;
+    d.style.cssText = `transform:${f.transform};width:${f.w}px;height:${f.h}px`;
+    d.onclick = () => vcClick(f.preset);
+    vcCube.appendChild(d);
+  }
+  for (const e of vcEdges) {
+    const d = el("div", "vc-edge");
+    d.style.cssText = `transform:${e.transform};width:${e.w}px;height:${e.h}px;left:${(100-e.w)/2}px;top:${(100-e.h)/2}px`;
+    d.onclick = () => vcClick(e.preset);
+    vcCube.appendChild(d);
+  }
+  for (const c of vcCorners) {
+    const d = el("div", "vc-corner");
+    d.style.cssText = `transform:${c.transform};left:${50-7.5}px;top:${50-7.5}px`;
+    d.onclick = () => vcClick(c.preset);
+    vcCube.appendChild(d);
+  }
+  vcWrap.appendChild(vcCube);
+  viewport.appendChild(vcWrap);
+
+  function updateViewCube() {
+    vcCube.style.transform = `rotateX(${cam.rotX}deg) rotateY(${cam.rotY}deg)`;
+    // Match perspective/ortho with main view
+    const p = 250 + (1 - cam.persp) * 2000;
+    vcWrap.style.perspective = `${p}px`;
+  }
+
   container.appendChild(viewport);
 
   // Create renderer — WebGL (three.js) or Canvas2D based on build flag
@@ -251,6 +361,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     renderer = new Canvas2DRenderer(canvas, cam);
   }
   renderer.setSceneSize(sceneW, sceneH);
+
+  // Sync viewcube on every dirty
+  const _origMarkDirty = renderer.markDirty.bind(renderer);
+  renderer.markDirty = () => { _origMarkDirty(); updateViewCube(); };
+  updateViewCube();
 
   // Build scene layers
   const sceneLayers: SceneLayer[] = layers.map(l => ({
