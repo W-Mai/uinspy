@@ -31,8 +31,8 @@ export class Canvas2DRenderer implements ISceneRenderer {
   setHighlight(addr: string | null) { this.hlAddr = addr; this.dirty = true; }
   markDirty() { this.dirty = true; }
 
-  // 3D point → 2D screen projection
-  private project(px: number, py: number, pz: number): [number, number, number] {
+  // 3D point → 2D screen projection (returns null if behind near plane)
+  private project(px: number, py: number, pz: number): [number, number, number] | null {
     const { rotX, rotY, zoom, panX, panY, persp } = this.cam;
     const rx = -rotX * Math.PI / 180, ry = -rotY * Math.PI / 180;
     const cx = Math.cos(rx), sx = Math.sin(rx);
@@ -45,10 +45,12 @@ export class Canvas2DRenderer implements ISceneRenderer {
     let y = oy * cx - z * sx;
     z = oy * sx + z * cx;
 
+    const p = C.PERSPECTIVE_DISTANCE;
+    // Clip points behind near plane
+    if (persp > 0 && z < -p * 0.95) return null;
+
     const rect = this.canvas.getBoundingClientRect();
     const cw = rect.width, ch = rect.height;
-    // persp=0 → ortho (scale=zoom), persp=1 → full perspective
-    const p = C.PERSPECTIVE_DISTANCE;
     const perspScale = (p / (p + z)) * zoom;
     const orthoScale = zoom;
     const scale = orthoScale + (perspScale - orthoScale) * persp;
@@ -87,20 +89,18 @@ export class Canvas2DRenderer implements ISceneRenderer {
     this.bufs.forEach(buf => {
       if (!buf.visible) return;
       const d = buf.depth;
-      const p0 = this.project(0, 0, d);
-      const p1 = this.project(this.sceneW, 0, d);
-      const p2 = this.project(this.sceneW, this.sceneH, d);
-      const p3 = this.project(0, this.sceneH, d);
+      const pts = [this.project(0, 0, d), this.project(this.sceneW, 0, d), this.project(this.sceneW, this.sceneH, d), this.project(0, this.sceneH, d)];
+      if (pts.some(p => !p)) return;
+      const [p0, p1, p2, p3] = pts as [number, number, number][];
       const avgZ = (p0[2] + p1[2] + p2[2] + p3[2]) / 4;
       items.push({ quad: [[p0[0], p0[1]], [p1[0], p1[1]], [p2[0], p2[1]], [p3[0], p3[1]]], z: avgZ, type: "buf", buf });
     });
 
     this.layers.forEach(l => {
       if (!l.visible) return;
-      const p0 = this.project(l.x, l.y, l.depth);
-      const p1 = this.project(l.x + l.w, l.y, l.depth);
-      const p2 = this.project(l.x + l.w, l.y + l.h, l.depth);
-      const p3 = this.project(l.x, l.y + l.h, l.depth);
+      const pts = [this.project(l.x, l.y, l.depth), this.project(l.x + l.w, l.y, l.depth), this.project(l.x + l.w, l.y + l.h, l.depth), this.project(l.x, l.y + l.h, l.depth)];
+      if (pts.some(p => !p)) return;
+      const [p0, p1, p2, p3] = pts as [number, number, number][];
       const avgZ = (p0[2] + p1[2] + p2[2] + p3[2]) / 4;
       items.push({ quad: [[p0[0], p0[1]], [p1[0], p1[1]], [p2[0], p2[1]], [p3[0], p3[1]]], z: avgZ, type: "layer", layer: l });
     });
@@ -125,6 +125,7 @@ export class Canvas2DRenderer implements ISceneRenderer {
             const p00 = this.project(sw * u0e, sh * v0e, item.buf!.depth);
             const p10 = this.project(sw * u1e, sh * v0e, item.buf!.depth);
             const p01 = this.project(sw * u0e, sh * v1e, item.buf!.depth);
+            if (!p00 || !p10 || !p01) continue;
 
             ctx.save();
             ctx.globalAlpha = 0.85;
