@@ -1,11 +1,12 @@
 {
   "name": "uinspy",
   "private": true,
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "scripts": {
     "dev": "bun run dev-css.ts && bun ./index.html",
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "build:lvgl": "UINSPY_TITLE='LVGL Dashboard' UINSPY_NO_SCREENSAVER=1 bun run build.ts"
   },
   "devDependencies": {
     "@tailwindcss/node": "^4.2.1",

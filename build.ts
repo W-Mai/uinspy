@@ -20,6 +20,11 @@ const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; ide
     __UINSPY_VERSION__: JSON.stringify(pkg.version),
     __UINSPY_BUILD_TIME__: JSON.stringify(buildTime),
     __UINSPY_SCREENSAVER__: process.env.UINSPY_NO_SCREENSAVER ? "false" : "true",
+    __UINSPY_TITLE__: JSON.stringify(process.env.UINSPY_TITLE || "UINSPY"),
+    __UINSPY_LOGO__: JSON.stringify((() => {
+      const t = (process.env.UINSPY_TITLE || "UINSPY").trim().split(/\s+/);
+      return t.length >= 2 ? (t[0][0] + t[1][0]).toUpperCase() : t[0].slice(0, 2).toUpperCase();
+    })()),
   },
 });
 
@@ -65,7 +70,7 @@ const buildHtml = (js: string, css: string) => `<!doctype html>
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>uinspy</title>
+<title>${process.env.UINSPY_TITLE || "UINSPY"}</title>
 <link rel="icon" href="data:image/svg+xml;base64,${faviconB64}"/>
 <style>${css}</style>
 </head>

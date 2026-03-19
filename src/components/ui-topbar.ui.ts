@@ -42,7 +42,7 @@ class UiTopbar extends BaseComponent {
   static __template = html`
     <header class="topbar">
       <div class="topbar-brand">
-        <span class="logo">UI</span> UINSPY
+        <span class="logo">${__UINSPY_LOGO__}</span> ${__UINSPY_TITLE__}
       </div>
       <div class="topbar-sep"></div>
       <div class="topbar-meta" id="header-meta"></div>
