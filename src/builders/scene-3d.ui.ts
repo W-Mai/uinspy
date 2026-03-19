@@ -270,6 +270,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   renderer.setLayers(sceneLayers);
 
   // Depth + visibility update
+  let currentSpread = 0; // actual rendered spread value
+
   function updateDepths(spreadOv?: number) {
     const bordersOn = toggleBorders.dataset.on === "1";
     const screenOffset: Record<number, number> = {};
@@ -277,13 +279,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     for (let i = 0; i < screenNames.length; i++) {
       if (layerVisible[i]) { screenOffset[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
     }
-    const spread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0);
+    currentSpread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0);
     layers.forEach((l, idx) => {
       const sl = sceneLayers[idx];
       sl.visible = bordersOn && layerVisible[l.screenIdx];
-      sl.depth = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : 0) * spread;
+      sl.depth = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : 0) * currentSpread;
     });
-    sceneBufs.forEach(b => { b.depth = -spread * 0.5; });
+    sceneBufs.forEach(b => { b.depth = -currentSpread * 0.5; });
     renderer.markDirty();
   }
 
@@ -304,7 +306,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     // Simulate ortho via large perspective value during animation
     const ORTHO_PERSP = 1e7;
     if (cam.ortho) { cam.ortho = false; cam.perspective = ORTHO_PERSP; }
-    const from = { rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: Number(spreadSlider.value), perspective: cam.perspective };
+    const from = { rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, perspective: cam.perspective };
     const targetPersp = target.ortho ? ORTHO_PERSP : C.PERSPECTIVE_DISTANCE;
     const t0 = performance.now();
     function tick(now: number) {
@@ -330,10 +332,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     animId = requestAnimationFrame(tick);
   }
 
+  let savedSpread = defaultSpread;
+
   function animateToggle(entering: boolean) {
-    if (!entering) { savedRotX = cam.rotX; savedRotY = cam.rotY; }
-    const spread = entering ? Number(spreadSlider.value) || defaultSpread : 0;
-    animateTo({ rotX: entering ? savedRotX : 0, rotY: entering ? savedRotY : 0, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread, ortho: cam.ortho });
+    if (!entering) { savedRotX = cam.rotX; savedRotY = cam.rotY; savedSpread = Number(spreadSlider.value) || defaultSpread; }
+    animateTo({ rotX: entering ? savedRotX : 0, rotY: entering ? savedRotY : 0, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: entering ? savedSpread : 0, ortho: cam.ortho }, () => {
+      spreadSlider.value = String(savedSpread);
+    });
   }
 
   updateDepths();
