@@ -230,10 +230,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
     ssBtn.onclick = () => enterSS(true);
     // Auto screensaver: mouse/keyboard exits; manual: only ESC (fullscreenchange) exits
-    container.addEventListener("mousemove", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
-    container.addEventListener("mousedown", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
-    container.addEventListener("keydown", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
-    container.addEventListener("wheel", () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
+    for (const ev of ["mousemove", "mousedown", "keydown", "wheel"] as const)
+      container.addEventListener(ev, () => { if (!manualSS) { exitSS(); resetSSTimer(); } });
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement) {
         // Force stop screensaver — ESC doesn't trigger keydown
@@ -669,13 +667,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     if (hit?.layer.addr) focusLayer(hit.layer.addr);
   });
 
+  const setToggle = (btn: HTMLElement, on: boolean) => { btn.dataset.on = on ? "1" : "0"; btn.classList.toggle("active", on); };
+
   // Reset
   resetBtn.onclick = () => {
     is3d = true;
-    toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
-    toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
-    bufToggles.forEach(btn => { btn.dataset.on = "1"; btn.classList.add("active"); });
-    toggleOrtho.dataset.on = "0"; toggleOrtho.classList.remove("active");
+    setToggle(toggle3d, true); setToggle(toggleBorders, true); setToggle(toggleOrtho, false);
+    bufToggles.forEach(btn => setToggle(btn, true));
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
     spreadSlider.disabled = false;

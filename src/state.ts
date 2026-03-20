@@ -13,18 +13,16 @@ export function registerHL(addr: string, el: HTMLElement) {
   hlRegistry[addr].push(el);
 }
 
-const hlListeners: ((addr: string | null) => void)[] = [];
-export function onHL(fn: (addr: string | null) => void) { hlListeners.push(fn); }
+export function onHL(fn: (addr: string | null) => void) { hlAddr.sub(() => fn(hlAddr.val)); }
 
-const focusListeners: ((addr: string) => void)[] = [];
-export function onFocus(fn: (addr: string) => void) { focusListeners.push(fn); }
-export function focusObj(addr: string) { focusListeners.forEach(fn => fn(addr)); }
+const focusAddr = signal<string | null>(null);
+export function onFocus(fn: (addr: string) => void) { focusAddr.sub(() => { if (focusAddr.val) fn(focusAddr.val); }); }
+export function focusObj(addr: string) { focusAddr.val = null; focusAddr.val = addr; }
 
 export function highlightObj(addr: string | null) {
   if (hlAddr.val === addr) return;
   clearHighlight();
   hlAddr.val = addr;
-  hlListeners.forEach(fn => fn(addr));
   if (!addr) return;
   hlRegistry[addr]?.forEach(e => e.classList.add("hl-active"));
   Object.values(hlOverlays).forEach(ov => {
@@ -52,7 +50,6 @@ export function clearHighlight() {
     ov.canvas.getContext("2d")!.clearRect(0, 0, ov.canvas.width, ov.canvas.height);
   });
   hlAddr.val = null;
-  hlListeners.forEach(fn => fn(null));
 }
 
 export function registerOverlay(key: string, overlay: typeof hlOverlays[string]) {
