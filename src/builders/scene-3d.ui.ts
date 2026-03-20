@@ -266,7 +266,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
         const solo = layerVisible.every((v, j) => j === i ? v : !v);
         if (solo) layerVisible.fill(true); else { layerVisible.fill(false); layerVisible[i] = true; }
         layerBtns.forEach((b, j) => b.classList.toggle("active", layerVisible[j]));
-        updateVisibility();
+        updateDepthSliderRange(); updateVisibility();
       };
       layerBtns.push(btn); bar.appendChild(btn);
     });
@@ -403,13 +403,16 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   let currentSpread = 0; // actual rendered spread value
 
   function updateDepthSliderRange() {
-    let min = Infinity, max = 0;
-    layers.forEach(l => { if (layerVisible[l.screenIdx]) { min = Math.min(min, l.localDepth); max = Math.max(max, l.localDepth); } });
-    if (min === Infinity) min = 0;
-    depthMinSlider.max = String(max);
-    depthMaxSlider.max = String(max);
-    if (depthRange.max > max) { depthRange.max = max; depthMaxSlider.value = String(max); }
-    if (depthRange.min > max) { depthRange.min = max; depthMinSlider.value = String(max); }
+    let visMin = Infinity, visMax = 0;
+    layers.forEach(l => { if (layerVisible[l.screenIdx]) { visMin = Math.min(visMin, l.localDepth); visMax = Math.max(visMax, l.localDepth); } });
+    if (visMin === Infinity) visMin = 0;
+    const prevMax = Number(depthMaxSlider.max);
+    depthMinSlider.max = String(visMax);
+    depthMaxSlider.max = String(visMax);
+    // If range was at full extent before, keep it at full extent
+    if (depthRange.max >= prevMax) { depthRange.max = visMax; depthMaxSlider.value = String(visMax); }
+    else if (depthRange.max > visMax) { depthRange.max = visMax; depthMaxSlider.value = String(visMax); }
+    if (depthRange.min > visMax) { depthRange.min = visMax; depthMinSlider.value = String(visMax); }
   }
 
   function updateDepths(spreadOv?: number, rangeOv?: { min: number; max: number }) {
@@ -701,6 +704,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
     spreadSlider.disabled = false;
     focusedAddr = null;
-    animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1, depthMin: 0, depthMax: maxDepth });
+    updateDepthSliderRange();
+    const visMax = Number(depthMaxSlider.max);
+    animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1, depthMin: 0, depthMax: visMax });
   };
 }
