@@ -1,7 +1,7 @@
 // 3D exploded object tree view
 import { el } from "../helpers";
 import { C, DEPTH_COLORS } from "../constants";
-import { registerHL, highlightObj, clearHighlight, selectObj } from "../state";
+import { registerHL, highlightObj, clearHighlight, selectObj, onHL } from "../state";
 import { Canvas2DRenderer } from "./canvas2d-renderer";
 import type { SceneLayer, BufImage, Camera, ISceneRenderer } from "./scene-renderer";
 import type { Display, ObjectTree, ObjNode } from "../types";
@@ -386,6 +386,9 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   sceneBufs.forEach(b => renderer.addBuf(b));
   renderer.setLayers(sceneLayers);
 
+  // Sync highlight from obj-tree or other sources
+  onHL(addr => renderer.setHighlight(addr));
+
   // Depth + visibility update
   let currentSpread = 0; // actual rendered spread value
 
@@ -476,9 +479,10 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   };
   window.addEventListener("mousemove", e => {
     if (!dragging) {
-      // Hover picking
+      // Hover picking — only when mouse is over the canvas
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      if (mx < 0 || my < 0 || mx > rect.width || my > rect.height) return;
       const hit = renderer.pick(mx, my);
       if (hit) {
         tooltip.textContent = hit.layer.info;
