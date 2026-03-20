@@ -141,6 +141,27 @@ export class Canvas2DRenderer implements ISceneRenderer {
             ctx.restore();
           }
         }
+        // Draw highlight rect on buf for hovered layer
+        if (this.hlAddr) {
+          const hl = this.layers.find(l => l.addr === this.hlAddr);
+          if (hl) {
+            const d = item.buf!.depth;
+            const hp = [this.project(hl.x, hl.y, d), this.project(hl.x + hl.w, hl.y, d), this.project(hl.x + hl.w, hl.y + hl.h, d), this.project(hl.x, hl.y + hl.h, d)];
+            if (hp.every(Boolean)) {
+              const [h0, h1, h2, h3] = hp as [number, number, number][];
+              ctx.beginPath();
+              ctx.moveTo(h0[0], h0[1]); ctx.lineTo(h1[0], h1[1]); ctx.lineTo(h2[0], h2[1]); ctx.lineTo(h3[0], h3[1]);
+              ctx.closePath();
+              ctx.fillStyle = "rgba(137, 180, 250, 0.18)";
+              ctx.fill();
+              ctx.setLineDash([4, 3]);
+              ctx.strokeStyle = "rgba(137, 180, 250, 0.6)";
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
+        }
         return;
       }
 

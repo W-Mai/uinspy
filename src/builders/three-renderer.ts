@@ -38,6 +38,7 @@ export class ThreeRenderer implements ISceneRenderer {
   // Three.js objects mapped to data
   private layerMeshes: THREE.Mesh[] = [];
   private bufMeshes: THREE.Mesh[] = [];
+  private bufHlMesh: THREE.Mesh | null = null;
   private layerGroup = new THREE.Group();
   private bufGroup = new THREE.Group();
 
@@ -233,6 +234,59 @@ export class ThreeRenderer implements ISceneRenderer {
       mesh.visible = buf.visible;
       mesh.position.set(0, 0, buf.depth);
     });
+
+    // Update buf highlight overlay
+    const hl = this.hlAddr ? this.layers.find(l => l.addr === this.hlAddr) : null;
+    if (hl && this.bufs.length > 0) {
+      const buf = this.bufs[0];
+      if (!this.bufHlMesh) {
+        const geo = new THREE.PlaneGeometry(1, 1);
+        const mat = new THREE.ShaderMaterial({
+          transparent: true, side: THREE.DoubleSide, depthWrite: false,
+          uniforms: {
+            size: { value: new THREE.Vector2(1, 1) },
+            borderWidth: { value: 2.0 },
+            dashLen: { value: 4.0 },
+            gapLen: { value: 3.0 },
+          },
+          vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+          fragmentShader: `
+            varying vec2 vUv;
+            uniform vec2 size;
+            uniform float borderWidth, dashLen, gapLen;
+            void main(){
+              vec2 px = vUv * size;
+              float dL = px.x, dR = size.x - px.x, dT = px.y, dB = size.y - px.y;
+              float d = min(min(dL,dR), min(dT,dB));
+              float bw = borderWidth;
+              float ps = fwidth(d);
+              float borderMask = 1.0 - smoothstep(bw - ps*0.5, bw + ps*0.5, d);
+              float perim = 0.0;
+              if(dL < dR && dL < dT && dL < dB) perim = px.y;
+              else if(dT < dB) perim = size.x - px.x + size.y;
+              else if(dR < dL) perim = size.x + size.y - px.y + size.x;
+              else perim = px.x;
+              float cycle = dashLen + gapLen;
+              float dashMask = step(mod(perim, cycle), dashLen);
+              float a = borderMask * dashMask * 0.9 + (1.0 - borderMask) * 0.35;
+              gl_FragColor = vec4(0.537, 0.706, 0.98, a);
+            }`,
+        });
+        this.bufHlMesh = new THREE.Mesh(geo, mat);
+        this.bufGroup.add(this.bufHlMesh);
+      }
+      this.bufHlMesh.visible = true;
+      const mat = this.bufHlMesh.material as THREE.ShaderMaterial;
+      mat.uniforms.size.value.set(hl.w, hl.h);
+      this.bufHlMesh.scale.set(hl.w, hl.h, 1);
+      this.bufHlMesh.position.set(
+        hl.x + hl.w / 2 - this.sceneW / 2,
+        -(hl.y + hl.h / 2 - this.sceneH / 2),
+        buf.depth + 1
+      );
+    } else if (this.bufHlMesh) {
+      this.bufHlMesh.visible = false;
+    }
 
     // Update camera from cam state
     this.updateCamera();
