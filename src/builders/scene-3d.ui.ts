@@ -168,7 +168,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   controls.appendChild(toggleOrtho);
 
   const defaultSpread = maxDepth > 0 ? Math.round(300 / maxDepth) : 30;
-  const spreadSlider = html`<input type="range" min="0" max="${Math.max(200, defaultSpread * 5)}" value="${defaultSpread}" class="scene-slider"/>` as HTMLInputElement;
+  const spreadMax = Math.max(500, defaultSpread * 5);
+  const spreadSlider = html`<input type="range" min="0" max="${spreadMax}" value="${defaultSpread}" class="scene-slider"/>` as HTMLInputElement;
   controls.appendChild(el("label", "scene-label", "Z Spread"));
   controls.appendChild(spreadSlider);
   const resetBtn = el("button", "scene-reset-btn", "Reset");
@@ -527,6 +528,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       case "ArrowUp": case "ArrowDown": case "ArrowLeft": case "ArrowRight":
       case "w": case "W": case "s": case "S": case "a": case "A": case "d": case "D":
       case "=": case "+": case "-": case "_":
+      case "q": case "Q": case "e": case "E":
         e.preventDefault(); keysDown.add(e.key.toLowerCase()); return;
       case "r": case "R": resetBtn.click(); return;
       case " ": e.preventDefault(); toggle3d.click(); return;
@@ -541,8 +543,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   container.addEventListener("keyup", e => keysDown.delete(e.key.toLowerCase()));
   container.addEventListener("blur", () => keysDown.clear());
 
-  const vel = { rotX: 0, rotY: 0, panX: 0, panY: 0, zoom: 0 };
-  const ACCEL = 0.4, FRICTION = 0.85, PAN_ACCEL = 0.8, PAN_FRICTION = 0.92, ZOOM_ACCEL = 0.005, ZOOM_FRICTION = 0.85;
+  const vel = { rotX: 0, rotY: 0, panX: 0, panY: 0, zoom: 0, spread: 0 };
+  const ACCEL = 0.4, FRICTION = 0.85, PAN_ACCEL = 0.8, PAN_FRICTION = 0.92, ZOOM_ACCEL = 0.005, ZOOM_FRICTION = 0.85, SPREAD_ACCEL = 0.5;
 
   function tickKeys() {
     const s = keysDown.has("shift") ? 3 : 1;
@@ -557,6 +559,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     if (keysDown.has("d")) vel.panX += PAN_ACCEL * s / cam.zoom;
     if (keysDown.has("=") || keysDown.has("+")) vel.zoom += ZOOM_ACCEL * s;
     if (keysDown.has("-") || keysDown.has("_")) vel.zoom -= ZOOM_ACCEL * s;
+    if (keysDown.has("e")) vel.spread += SPREAD_ACCEL * s;
+    if (keysDown.has("q")) vel.spread -= SPREAD_ACCEL * s;
 
     // Apply velocity
     cam.rotX = Math.max(-90, Math.min(90, cam.rotX + vel.rotX));
@@ -565,13 +569,22 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     cam.panY += vel.panY;
     cam.zoom = Math.max(C.MIN_ZOOM, Math.min(C.MAX_ZOOM, cam.zoom * (1 + vel.zoom)));
 
+    // Spread
+    if (Math.abs(vel.spread) > 0.01) {
+      const max = spreadMax;
+      const nv = Math.max(0, Math.min(max, Number(spreadSlider.value) + vel.spread));
+      spreadSlider.value = String(nv);
+      updateDepths();
+    }
+
     // Friction
     vel.rotX *= FRICTION; vel.rotY *= FRICTION;
     vel.panX *= PAN_FRICTION; vel.panY *= PAN_FRICTION;
     vel.zoom *= ZOOM_FRICTION;
+    vel.spread *= FRICTION;
 
     // Stop when negligible
-    const moving = Math.abs(vel.rotX) + Math.abs(vel.rotY) + Math.abs(vel.panX) + Math.abs(vel.panY) + Math.abs(vel.zoom) > 0.001;
+    const moving = Math.abs(vel.rotX) + Math.abs(vel.rotY) + Math.abs(vel.panX) + Math.abs(vel.panY) + Math.abs(vel.zoom) + Math.abs(vel.spread) > 0.001;
     if (moving || keysDown.size > 0) renderer.markDirty();
   }
   (function keyLoop() { tickKeys(); requestAnimationFrame(keyLoop); })();
