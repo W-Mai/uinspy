@@ -402,14 +402,22 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   // Depth + visibility update
   let currentSpread = 0; // actual rendered spread value
 
+  function computeScreenOffsets(): Record<number, number> {
+    const o: Record<number, number> = {};
+    let off = 0;
+    for (let i = 0; i < screenNames.length; i++) {
+      if (layerVisible[i]) { o[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
+    }
+    return o;
+  }
+
   function updateDepthSliderRange() {
-    let visMin = Infinity, visMax = 0;
-    layers.forEach(l => { if (layerVisible[l.screenIdx]) { visMin = Math.min(visMin, l.localDepth); visMax = Math.max(visMax, l.localDepth); } });
-    if (visMin === Infinity) visMin = 0;
+    const so = computeScreenOffsets();
+    let visMax = 0;
+    layers.forEach(l => { if (so[l.screenIdx] !== undefined) visMax = Math.max(visMax, so[l.screenIdx] + l.localDepth); });
     const prevMax = Number(depthMaxSlider.max);
     depthMinSlider.max = String(visMax);
     depthMaxSlider.max = String(visMax);
-    // If range was at full extent before, keep it at full extent
     if (depthRange.max >= prevMax) { depthRange.max = visMax; depthMaxSlider.value = String(visMax); }
     else if (depthRange.max > visMax) { depthRange.max = visMax; depthMaxSlider.value = String(visMax); }
     if (depthRange.min > visMax) { depthRange.min = visMax; depthMinSlider.value = String(visMax); }
@@ -418,11 +426,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   function updateDepths(spreadOv?: number, rangeOv?: { min: number; max: number }) {
     const bordersOn = toggleBorders.dataset.on === "1";
     const range = rangeOv ?? depthRange;
-    const screenOffset: Record<number, number> = {};
-    let off = 0;
-    for (let i = 0; i < screenNames.length; i++) {
-      if (layerVisible[i]) { screenOffset[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
-    }
+    const screenOffset = computeScreenOffsets();
     currentSpread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0.1);
     // Compressed depth: count only visible layers in range
     let compressedIdx = 0;
@@ -430,7 +434,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     const seenDepths = new Set<number>();
     layers.forEach(l => {
       const gd = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : -1);
-      if (l.localDepth >= Math.round(range.min) && l.localDepth <= Math.round(range.max) && !seenDepths.has(gd)) {
+      if (gd >= Math.round(range.min) && gd <= Math.round(range.max) && !seenDepths.has(gd)) {
         seenDepths.add(gd);
         compressedDepth[gd] = compressedIdx++;
       }
@@ -438,7 +442,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     layers.forEach((l, idx) => {
       const sl = sceneLayers[idx];
       const gd = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : -1);
-      const inRange = l.localDepth >= Math.round(range.min) && l.localDepth <= Math.round(range.max);
+      const inRange = gd >= Math.round(range.min) && gd <= Math.round(range.max);
       sl.visible = bordersOn && layerVisible[l.screenIdx] && inRange;
       sl.depth = (compressedDepth[gd] ?? 0) * currentSpread;
     });
@@ -516,7 +520,9 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     focusedAddr = addr;
     const cx = l.x1 + (l.x2 - l.x1) / 2 - sceneW / 2;
     const cy = l.y1 + (l.y2 - l.y1) / 2 - sceneH / 2;
-    animateTo({ rotX: 0, rotY: 0, zoom: cam.zoom, panX: -cx, panY: -cy, spread: currentSpread, persp: 0, depthMin: l.localDepth, depthMax: l.localDepth });
+    const so = computeScreenOffsets();
+    const gd = (so[l.screenIdx] ?? 0) + l.localDepth;
+    animateTo({ rotX: 0, rotY: 0, zoom: cam.zoom, panX: -cx, panY: -cy, spread: currentSpread, persp: 0, depthMin: gd, depthMax: gd });
   }
 
   let savedPersp = cam.persp;
