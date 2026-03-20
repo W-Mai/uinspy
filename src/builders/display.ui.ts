@@ -22,7 +22,11 @@ const __css = css`
   .disp-addr { @apply text-sapphire font-mono text-[11px]; }
   .disp-res { @apply text-txt font-semibold; }
   .disp-screens { @apply text-overlay1 text-[11px]; }
-  .obj-tree-header { @apply text-overlay1 text-[.75rem] mb-1 px-2 py-1 border-b-s0; }
+  .obj-tree-header { @apply flex items-center gap-2 text-overlay1 text-[.75rem] mb-1 px-2 py-1 border-b-s0; }
+  .obj-tree-expand-btn {
+    @apply ml-auto text-[10px] text-overlay0 cursor-pointer rounded px-1.5 py-0.5 bg-base border-s0 transition-theme;
+  }
+  .obj-tree-expand-btn:hover { @apply text-blue border-blue; }
   .obj-split { @apply flex items-stretch gap-2 h-[700px]; }
   .obj-split > .obj-tree-view { @apply flex-[0_0_220px] min-w-0 overflow-auto text-[11px]; }
   .obj-split > .obj-3d-view { @apply relative flex flex-col flex-1 min-w-0; }

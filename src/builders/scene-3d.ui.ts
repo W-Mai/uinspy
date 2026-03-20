@@ -190,6 +190,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   };
   controls.append(resetBtn, spacer);
 
+  let inScreensaver = false;
+
   if (__UINSPY_SCREENSAVER__) {
     const ssBtn = el("button", "scene-fullscreen-btn", "🎬");
     ssBtn.title = "Screensaver";
@@ -200,6 +202,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
     const enterSS = (manual = false) => {
       manualSS = manual;
+      inScreensaver = true;
       if (!document.fullscreenElement) container.requestFullscreen();
       container.classList.add("screensaver");
       const t0 = performance.now();
@@ -220,6 +223,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       container.classList.remove("screensaver");
       if (ssAnimId) { cancelAnimationFrame(ssAnimId); ssAnimId = null; }
       manualSS = false;
+      inScreensaver = false;
       renderer.markDirty();
     };
 
@@ -238,6 +242,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
         container.classList.remove("screensaver");
         if (ssAnimId) { cancelAnimationFrame(ssAnimId); ssAnimId = null; }
         if (ssTimer) { clearTimeout(ssTimer); ssTimer = null; }
+        inScreensaver = false;
         renderer.markDirty();
       }
       else resetSSTimer();
@@ -530,6 +535,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   let lastX = 0, lastY = 0;
 
   viewport.onmousedown = e => {
+    if (inScreensaver) return;
     if (e.button === 1 || (e.button === 0 && e.shiftKey)) { e.preventDefault(); dragging = "pan"; lastX = e.clientX; lastY = e.clientY; viewport.style.cursor = "move"; }
     else if (e.button === 0 && is3d) { dragging = "rotate"; lastX = e.clientX; lastY = e.clientY; viewport.style.cursor = "grabbing"; }
   };
@@ -570,6 +576,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   window.addEventListener("mouseup", () => { dragging = false; viewport.style.cursor = "grab"; });
   viewport.addEventListener("wheel", e => {
     e.preventDefault();
+    if (inScreensaver) return;
     if (e.ctrlKey) { cam.zoom = Math.max(C.MIN_ZOOM, Math.min(C.MAX_ZOOM, cam.zoom * (1 - e.deltaY * C.ZOOM_SENSITIVITY))); }
     else { cam.panX -= e.deltaX / cam.zoom; cam.panY -= e.deltaY / cam.zoom; }
     renderer.markDirty();
@@ -579,6 +586,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   container.tabIndex = 0;
   const keysDown = new Set<string>();
   container.addEventListener("keydown", e => {
+    if (inScreensaver) return;
     if (e.key === "Shift") { keysDown.add("shift"); return; }
     switch (e.key) {
       case "ArrowUp": case "ArrowDown": case "ArrowLeft": case "ArrowRight":
@@ -649,6 +657,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   // Click
   const pickAt = (e: MouseEvent) => { const r = canvas.getBoundingClientRect(); return renderer.pick(e.clientX - r.left, e.clientY - r.top); };
   canvas.addEventListener("click", e => {
+    if (inScreensaver) return;
     const hit = pickAt(e);
     if (hit?.layer.addr) {
       selectObj(hit.layer.addr);
@@ -663,6 +672,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   });
 
   canvas.addEventListener("dblclick", e => {
+    if (inScreensaver) return;
     const hit = pickAt(e);
     if (hit?.layer.addr) focusLayer(hit.layer.addr);
   });
@@ -679,6 +689,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     spreadSlider.disabled = false;
     focusedAddr = null;
     updateDepthSliderRange();
+    updateVisibility();
     const visMax = Number(depthMaxSlider.max);
     animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1, depthMin: 0, depthMax: visMax });
   };
