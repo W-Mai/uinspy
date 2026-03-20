@@ -544,23 +544,22 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   container.addEventListener("blur", () => keysDown.clear());
 
   const vel = { rotX: 0, rotY: 0, panX: 0, panY: 0, zoom: 0, spread: 0 };
-  const ACCEL = 0.4, FRICTION = 0.85, PAN_ACCEL = 0.8, PAN_FRICTION = 0.92, ZOOM_ACCEL = 0.005, ZOOM_FRICTION = 0.85, SPREAD_ACCEL = 0.5;
 
   function tickKeys() {
     const s = keysDown.has("shift") ? 3 : 1;
     // Accelerate
-    if (keysDown.has("arrowup"))    vel.rotX += ACCEL * s;
-    if (keysDown.has("arrowdown"))  vel.rotX -= ACCEL * s;
-    if (keysDown.has("arrowleft"))  vel.rotY -= ACCEL * s;
-    if (keysDown.has("arrowright")) vel.rotY += ACCEL * s;
-    if (keysDown.has("w")) vel.panY -= PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("s")) vel.panY += PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("a")) vel.panX -= PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("d")) vel.panX += PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("=") || keysDown.has("+")) vel.zoom += ZOOM_ACCEL * s;
-    if (keysDown.has("-") || keysDown.has("_")) vel.zoom -= ZOOM_ACCEL * s;
-    if (keysDown.has("e")) vel.spread += SPREAD_ACCEL * s;
-    if (keysDown.has("q")) vel.spread -= SPREAD_ACCEL * s;
+    if (keysDown.has("arrowup"))    vel.rotX += C.KB_ACCEL * s;
+    if (keysDown.has("arrowdown"))  vel.rotX -= C.KB_ACCEL * s;
+    if (keysDown.has("arrowleft"))  vel.rotY -= C.KB_ACCEL * s;
+    if (keysDown.has("arrowright")) vel.rotY += C.KB_ACCEL * s;
+    if (keysDown.has("w")) vel.panY -= C.KB_PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("s")) vel.panY += C.KB_PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("a")) vel.panX -= C.KB_PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("d")) vel.panX += C.KB_PAN_ACCEL * s / cam.zoom;
+    if (keysDown.has("=") || keysDown.has("+")) vel.zoom += C.KB_ZOOM_ACCEL * s;
+    if (keysDown.has("-") || keysDown.has("_")) vel.zoom -= C.KB_ZOOM_ACCEL * s;
+    if (keysDown.has("e")) vel.spread += C.KB_SPREAD_ACCEL * s;
+    if (keysDown.has("q")) vel.spread -= C.KB_SPREAD_ACCEL * s;
 
     // Apply velocity
     cam.rotX = Math.max(-90, Math.min(90, cam.rotX + vel.rotX));
@@ -578,10 +577,10 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     }
 
     // Friction
-    vel.rotX *= FRICTION; vel.rotY *= FRICTION;
-    vel.panX *= PAN_FRICTION; vel.panY *= PAN_FRICTION;
-    vel.zoom *= ZOOM_FRICTION;
-    vel.spread *= FRICTION;
+    vel.rotX *= C.KB_FRICTION; vel.rotY *= C.KB_FRICTION;
+    vel.panX *= C.KB_PAN_FRICTION; vel.panY *= C.KB_PAN_FRICTION;
+    vel.zoom *= C.KB_ZOOM_FRICTION;
+    vel.spread *= C.KB_FRICTION;
 
     // Stop when negligible
     const moving = Math.abs(vel.rotX) + Math.abs(vel.rotY) + Math.abs(vel.panX) + Math.abs(vel.panY) + Math.abs(vel.zoom) + Math.abs(vel.spread) > 0.001;

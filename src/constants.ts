@@ -56,6 +56,14 @@ export const C = {
   VC_CORNER: 15,
   VC_TOP: 8,
   VC_RIGHT: 8,
+  // Keyboard inertia
+  KB_ACCEL: 0.4,
+  KB_FRICTION: 0.85,
+  KB_PAN_ACCEL: 0.8,
+  KB_PAN_FRICTION: 0.92,
+  KB_ZOOM_ACCEL: 0.005,
+  KB_ZOOM_FRICTION: 0.85,
+  KB_SPREAD_ACCEL: 0.5,
 } as const;
 
 export const INDEV_ICONS: Record<string, string> = {
