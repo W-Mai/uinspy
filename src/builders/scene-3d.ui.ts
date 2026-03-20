@@ -585,11 +585,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     lastX = e.clientX; lastY = e.clientY;
     if (dragging === "rotate") {
       exitFocus();
-      cam.rotY += dx * C.ROTATION_SENSITIVITY * C.CAM_DIR;
-      cam.rotX = Math.max(-90, Math.min(90, cam.rotX - dy * C.ROTATION_SENSITIVITY * C.CAM_DIR));
+      cam.rotY += dx * C.ROTATION_SENSITIVITY;
+      cam.rotX = Math.max(-90, Math.min(90, cam.rotX - dy * C.ROTATION_SENSITIVITY));
     } else {
-      cam.panX += dx * C.CAM_DIR / cam.zoom;
-      cam.panY += dy * C.CAM_DIR / cam.zoom;
+      cam.panX += dx / cam.zoom;
+      cam.panY += dy / cam.zoom;
     }
     renderer.markDirty();
   });
