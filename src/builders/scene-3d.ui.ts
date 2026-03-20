@@ -284,71 +284,43 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   // ViewCube — CSS 3D orientation gizmo
   const S = C.VC_FACE / 2;
-  type VCPreset = { rotX: number; rotY: number; label?: string };
-  const vcFaces: { transform: string; preset: VCPreset; label: string; w: number; h: number }[] = [
-    { transform: `translateZ(${S}px)`,                          preset: { rotX: 0, rotY: 0 },     label: "Front", w: C.VC_FACE, h: C.VC_FACE },
-    { transform: `rotateY(180deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 180 },   label: "Back",  w: C.VC_FACE, h: C.VC_FACE },
-    { transform: `rotateY(90deg) translateZ(${S}px)`,           preset: { rotX: 0, rotY: -90 },   label: "Right", w: C.VC_FACE, h: C.VC_FACE },
-    { transform: `rotateY(-90deg) translateZ(${S}px)`,          preset: { rotX: 0, rotY: 90 },    label: "Left",  w: C.VC_FACE, h: C.VC_FACE },
-    { transform: `rotateX(90deg) translateZ(${S}px)`,           preset: { rotX: -90, rotY: 0 },   label: "Top",   w: C.VC_FACE, h: C.VC_FACE },
-    { transform: `rotateX(-90deg) translateZ(${S}px)`,          preset: { rotX: 90, rotY: 0 },    label: "Bot",   w: C.VC_FACE, h: C.VC_FACE },
-  ];
-  // Edges: 12 edges connecting faces
-  const E = S;
-  const ET = C.VC_EDGE;
-  const vcEdges: { transform: string; preset: VCPreset; w: number; h: number }[] = [
-    // Front face edges (4)
-    { transform: `translateY(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: -45, rotY: 0 },    w: C.VC_FACE, h: ET },
-    { transform: `translateY(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 45, rotY: 0 },     w: C.VC_FACE, h: ET },
-    { transform: `translateX(-${E}px) translateZ(${E}px)`,                                  preset: { rotX: 0, rotY: 45 },     w: ET, h: C.VC_FACE },
-    { transform: `translateX(${E}px) translateZ(${E}px)`,                                   preset: { rotX: 0, rotY: -45 },    w: ET, h: C.VC_FACE },
-    // Back face edges (4)
-    { transform: `translateY(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: -45, rotY: 180 },  w: C.VC_FACE, h: ET },
-    { transform: `translateY(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 45, rotY: 180 },   w: C.VC_FACE, h: ET },
-    { transform: `translateX(-${E}px) translateZ(-${E}px) rotateY(180deg)`,                 preset: { rotX: 0, rotY: 135 },    w: ET, h: C.VC_FACE },
-    { transform: `translateX(${E}px) translateZ(-${E}px) rotateY(180deg)`,                  preset: { rotX: 0, rotY: -135 },   w: ET, h: C.VC_FACE },
-    // Connecting edges (4, horizontal between front/back)
-    { transform: `translateX(-${E}px) translateY(-${E}px) rotateY(90deg)`,                  preset: { rotX: -45, rotY: 90 },   w: C.VC_FACE, h: ET },
-    { transform: `translateX(${E}px) translateY(-${E}px) rotateY(90deg)`,                   preset: { rotX: -45, rotY: -90 },  w: C.VC_FACE, h: ET },
-    { transform: `translateX(-${E}px) translateY(${E}px) rotateY(90deg)`,                   preset: { rotX: 45, rotY: 90 },    w: C.VC_FACE, h: ET },
-    { transform: `translateX(${E}px) translateY(${E}px) rotateY(90deg)`,                    preset: { rotX: 45, rotY: -90 },   w: C.VC_FACE, h: ET },
-  ];
-  // Corners: 8 vertices
-  const vcCorners: { transform: string; preset: VCPreset }[] = [
-    { transform: `translate3d(-${E}px,-${E}px,${E}px)`,   preset: { rotX: -45, rotY: 45 } },
-    { transform: `translate3d(${E}px,-${E}px,${E}px)`,    preset: { rotX: -45, rotY: -45 } },
-    { transform: `translate3d(-${E}px,${E}px,${E}px)`,    preset: { rotX: 45, rotY: 45 } },
-    { transform: `translate3d(${E}px,${E}px,${E}px)`,     preset: { rotX: 45, rotY: -45 } },
-    { transform: `translate3d(-${E}px,-${E}px,-${E}px)`,  preset: { rotX: -45, rotY: 135 } },
-    { transform: `translate3d(${E}px,-${E}px,-${E}px)`,   preset: { rotX: -45, rotY: -135 } },
-    { transform: `translate3d(-${E}px,${E}px,-${E}px)`,   preset: { rotX: 45, rotY: 135 } },
-    { transform: `translate3d(${E}px,${E}px,-${E}px)`,    preset: { rotX: 45, rotY: -135 } },
+  type VCPreset = { rotX: number; rotY: number };
+  type VCItem = { transform: string; preset: VCPreset; w: number; h: number; label?: string; cls: string };
+  const vcItems: VCItem[] = [
+    // 6 faces
+    ...[
+      [`translateZ(${S}px)`, 0, 0, "Front"], [`rotateY(180deg) translateZ(${S}px)`, 0, 180, "Back"],
+      [`rotateY(90deg) translateZ(${S}px)`, 0, -90, "Right"], [`rotateY(-90deg) translateZ(${S}px)`, 0, 90, "Left"],
+      [`rotateX(90deg) translateZ(${S}px)`, -90, 0, "Top"], [`rotateX(-90deg) translateZ(${S}px)`, 90, 0, "Bot"],
+    ].map(([t, rx, ry, l]) => ({ transform: t as string, preset: { rotX: rx as number, rotY: ry as number }, w: C.VC_FACE, h: C.VC_FACE, label: l as string, cls: "vc-face" })),
+    // 12 edges
+    ...([
+      [`translateY(-${S}px) translateZ(${S}px)`, -45, 0, C.VC_FACE, C.VC_EDGE],
+      [`translateY(${S}px) translateZ(${S}px)`, 45, 0, C.VC_FACE, C.VC_EDGE],
+      [`translateX(-${S}px) translateZ(${S}px)`, 0, 45, C.VC_EDGE, C.VC_FACE],
+      [`translateX(${S}px) translateZ(${S}px)`, 0, -45, C.VC_EDGE, C.VC_FACE],
+      [`translateY(-${S}px) translateZ(-${S}px) rotateY(180deg)`, -45, 180, C.VC_FACE, C.VC_EDGE],
+      [`translateY(${S}px) translateZ(-${S}px) rotateY(180deg)`, 45, 180, C.VC_FACE, C.VC_EDGE],
+      [`translateX(-${S}px) translateZ(-${S}px) rotateY(180deg)`, 0, 135, C.VC_EDGE, C.VC_FACE],
+      [`translateX(${S}px) translateZ(-${S}px) rotateY(180deg)`, 0, -135, C.VC_EDGE, C.VC_FACE],
+      [`translateX(-${S}px) translateY(-${S}px) rotateY(90deg)`, -45, 90, C.VC_FACE, C.VC_EDGE],
+      [`translateX(${S}px) translateY(-${S}px) rotateY(90deg)`, -45, -90, C.VC_FACE, C.VC_EDGE],
+      [`translateX(-${S}px) translateY(${S}px) rotateY(90deg)`, 45, 90, C.VC_FACE, C.VC_EDGE],
+      [`translateX(${S}px) translateY(${S}px) rotateY(90deg)`, 45, -90, C.VC_FACE, C.VC_EDGE],
+    ] as [string, number, number, number, number][]).map(([t, rx, ry, w, h]) => ({ transform: t, preset: { rotX: rx, rotY: ry }, w, h, cls: "vc-edge" })),
+    // 8 corners
+    ...([[-1,-1,1,45], [1,-1,1,-45], [-1,1,1,45], [1,1,1,-45], [-1,-1,-1,135], [1,-1,-1,-135], [-1,1,-1,135], [1,1,-1,-135]] as [number,number,number,number][])
+      .map(([sx, sy, sz, ry]) => ({ transform: `translate3d(${sx*S}px,${sy*S}px,${sz*S}px)`, preset: { rotX: sy * 45, rotY: ry }, w: C.VC_CORNER, h: C.VC_CORNER, cls: "vc-corner" })),
   ];
 
   const vcWrap = el("div", "viewcube-wrap");
   vcWrap.style.cssText = `top:${C.VC_TOP}px;right:${C.VC_RIGHT}px;width:${C.VC_SIZE}px;height:${C.VC_SIZE}px`;
   const vcCube = el("div", "viewcube");
-  const C2 = C.VC_SIZE / 2; // center of wrap
-  function vcClick(p: VCPreset) {
-    animateTo({ rotX: p.rotX, rotY: p.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp });
-  }
-  for (const f of vcFaces) {
-    const d = el("div", "vc-face");
-    d.textContent = f.label;
-    d.style.cssText = `transform:${f.transform};width:${C.VC_FACE}px;height:${C.VC_FACE}px;left:${C2-C.VC_FACE/2}px;top:${C2-C.VC_FACE/2}px`;
-    d.onclick = () => vcClick(f.preset);
-    vcCube.appendChild(d);
-  }
-  for (const e of vcEdges) {
-    const d = el("div", "vc-edge");
-    d.style.cssText = `transform:${e.transform};width:${e.w}px;height:${e.h}px;left:${(C.VC_SIZE-e.w)/2}px;top:${(C.VC_SIZE-e.h)/2}px`;
-    d.onclick = () => vcClick(e.preset);
-    vcCube.appendChild(d);
-  }
-  for (const c of vcCorners) {
-    const d = el("div", "vc-corner");
-    d.style.cssText = `transform:${c.transform};width:${C.VC_CORNER}px;height:${C.VC_CORNER}px;left:${C2-C.VC_CORNER/2}px;top:${C2-C.VC_CORNER/2}px`;
-    d.onclick = () => vcClick(c.preset);
+  const C2 = C.VC_SIZE / 2;
+  for (const item of vcItems) {
+    const d = el("div", item.cls, item.label);
+    d.style.cssText = `transform:${item.transform};width:${item.w}px;height:${item.h}px;left:${(C.VC_SIZE-item.w)/2}px;top:${(C.VC_SIZE-item.h)/2}px`;
+    d.onclick = () => animateTo({ rotX: item.preset.rotX, rotY: item.preset.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp });
     vcCube.appendChild(d);
   }
   vcWrap.appendChild(vcCube);
