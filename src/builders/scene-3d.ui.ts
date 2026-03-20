@@ -489,12 +489,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   let savedSpread = defaultSpread;
   let savedDepthRange = { min: 0, max: maxDepth };
+  let savedFocusCam = { rotX: 0, rotY: 0, panX: 0, panY: 0, persp: 1 };
   let focusedAddr: string | null = null;
 
   function exitFocus() {
     if (!focusedAddr) return;
     focusedAddr = null;
-    animateTo({ rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp, depthMin: savedDepthRange.min, depthMax: savedDepthRange.max });
+    animateTo({ rotX: savedFocusCam.rotX, rotY: savedFocusCam.rotY, zoom: cam.zoom, panX: savedFocusCam.panX, panY: savedFocusCam.panY, spread: currentSpread, persp: savedFocusCam.persp, depthMin: savedDepthRange.min, depthMax: savedDepthRange.max });
   }
 
   function focusLayer(addr: string) {
@@ -504,10 +505,12 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       exitFocus();
       return;
     }
-    // Save current range before focusing
-    if (!focusedAddr) savedDepthRange = { ...depthRange };
+    // Save state before focusing
+    if (!focusedAddr) {
+      savedDepthRange = { ...depthRange };
+      savedFocusCam = { rotX: cam.rotX, rotY: cam.rotY, panX: cam.panX, panY: cam.panY, persp: cam.persp };
+    }
     focusedAddr = addr;
-    // Center camera on layer
     const cx = l.x1 + (l.x2 - l.x1) / 2 - sceneW / 2;
     const cy = l.y1 + (l.y2 - l.y1) / 2 - sceneH / 2;
     animateTo({ rotX: 0, rotY: 0, zoom: cam.zoom, panX: -cx, panY: -cy, spread: currentSpread, persp: 0, depthMin: l.localDepth, depthMax: l.localDepth });
