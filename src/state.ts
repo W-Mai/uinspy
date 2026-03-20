@@ -16,6 +16,10 @@ export function registerHL(addr: string, el: HTMLElement) {
 const hlListeners: ((addr: string | null) => void)[] = [];
 export function onHL(fn: (addr: string | null) => void) { hlListeners.push(fn); }
 
+const focusListeners: ((addr: string) => void)[] = [];
+export function onFocus(fn: (addr: string) => void) { focusListeners.push(fn); }
+export function focusObj(addr: string) { focusListeners.forEach(fn => fn(addr)); }
+
 export function highlightObj(addr: string | null) {
   if (hlAddr.val === addr) return;
   clearHighlight();

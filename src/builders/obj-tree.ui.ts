@@ -1,7 +1,7 @@
 // Object tree rendering and detail panel
 import { el, kvPair, xref } from "../helpers";
 import { DEPTH_COLORS } from "../constants";
-import { registerHL, highlightObj, clearHighlight, selectObj, objDataMap } from "../state";
+import { registerHL, highlightObj, clearHighlight, selectObj, focusObj, objDataMap } from "../state";
 import type { ObjNode } from "../types";
 
 const __css = css`
@@ -49,6 +49,7 @@ export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
     sum.addEventListener("mouseenter", () => highlightObj(obj.addr));
     sum.addEventListener("mouseleave", () => clearHighlight());
     sum.addEventListener("click", e => { e.stopPropagation(); selectObj(obj.addr); });
+    sum.addEventListener("dblclick", e => { e.stopPropagation(); focusObj(obj.addr); });
   }
 
   obj.children?.forEach(ch => det.appendChild(renderObjTree(ch, depth + 1)));

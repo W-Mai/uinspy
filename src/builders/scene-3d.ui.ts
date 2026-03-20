@@ -1,7 +1,7 @@
 // 3D exploded object tree view
 import { el } from "../helpers";
 import { C, DEPTH_COLORS } from "../constants";
-import { registerHL, highlightObj, clearHighlight, selectObj, onHL } from "../state";
+import { registerHL, highlightObj, clearHighlight, selectObj, onHL, onFocus } from "../state";
 import { Canvas2DRenderer } from "./canvas2d-renderer";
 import type { SceneLayer, BufImage, Camera, ISceneRenderer } from "./scene-renderer";
 import type { Display, ObjectTree, ObjNode } from "../types";
@@ -172,6 +172,14 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const spreadSlider = html`<input type="range" min="0" max="${spreadMax}" value="${defaultSpread}" class="scene-slider"/>` as HTMLInputElement;
   controls.appendChild(el("label", "scene-label", "Z Spread"));
   controls.appendChild(spreadSlider);
+
+  // Depth range filter
+  let depthRange = { min: 0, max: maxDepth };
+  const depthMinSlider = html`<input type="range" min="0" max="${maxDepth}" value="0" class="scene-slider"/>` as HTMLInputElement;
+  const depthMaxSlider = html`<input type="range" min="0" max="${maxDepth}" value="${maxDepth}" class="scene-slider"/>` as HTMLInputElement;
+  controls.appendChild(el("label", "scene-label", "Depth"));
+  controls.appendChild(depthMinSlider);
+  controls.appendChild(depthMaxSlider);
   const resetBtn = el("button", "scene-reset-btn", "Reset");
   const spacer = el("span", "scene-spacer");
   const fsBtn = el("button", "scene-fullscreen-btn", "⛶");
@@ -252,7 +260,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       layerVisible.push(on);
       const btn = el("button", "scene-layer-btn" + (on ? " active" : ""), name);
       btn.style.borderBottomColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
-      btn.onclick = () => { layerVisible[i] = !layerVisible[i]; btn.classList.toggle("active", layerVisible[i]); updateVisibility(); };
+      btn.onclick = () => { layerVisible[i] = !layerVisible[i]; btn.classList.toggle("active", layerVisible[i]); updateDepthSliderRange(); updateVisibility(); };
       btn.ondblclick = e => {
         e.preventDefault();
         const solo = layerVisible.every((v, j) => j === i ? v : !v);
@@ -389,22 +397,47 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   // Sync highlight from obj-tree or other sources
   onHL(addr => renderer.setHighlight(addr));
+  onFocus(addr => focusLayer(addr));
 
   // Depth + visibility update
   let currentSpread = 0; // actual rendered spread value
 
-  function updateDepths(spreadOv?: number) {
+  function updateDepthSliderRange() {
+    let min = Infinity, max = 0;
+    layers.forEach(l => { if (layerVisible[l.screenIdx]) { min = Math.min(min, l.localDepth); max = Math.max(max, l.localDepth); } });
+    if (min === Infinity) min = 0;
+    depthMinSlider.max = String(max);
+    depthMaxSlider.max = String(max);
+    if (depthRange.max > max) { depthRange.max = max; depthMaxSlider.value = String(max); }
+    if (depthRange.min > max) { depthRange.min = max; depthMinSlider.value = String(max); }
+  }
+
+  function updateDepths(spreadOv?: number, rangeOv?: { min: number; max: number }) {
     const bordersOn = toggleBorders.dataset.on === "1";
+    const range = rangeOv ?? depthRange;
     const screenOffset: Record<number, number> = {};
     let off = 0;
     for (let i = 0; i < screenNames.length; i++) {
       if (layerVisible[i]) { screenOffset[i] = off; off += (screenMaxLocal[i] || 0) + C.SCREEN_GAP; }
     }
     currentSpread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0.1);
+    // Compressed depth: count only visible layers in range
+    let compressedIdx = 0;
+    const compressedDepth: Record<number, number> = {};
+    const seenDepths = new Set<number>();
+    layers.forEach(l => {
+      const gd = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : -1);
+      if (l.localDepth >= Math.round(range.min) && l.localDepth <= Math.round(range.max) && !seenDepths.has(gd)) {
+        seenDepths.add(gd);
+        compressedDepth[gd] = compressedIdx++;
+      }
+    });
     layers.forEach((l, idx) => {
       const sl = sceneLayers[idx];
-      sl.visible = bordersOn && layerVisible[l.screenIdx];
-      sl.depth = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : 0) * currentSpread;
+      const gd = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : -1);
+      const inRange = l.localDepth >= Math.round(range.min) && l.localDepth <= Math.round(range.max);
+      sl.visible = bordersOn && layerVisible[l.screenIdx] && inRange;
+      sl.depth = (compressedDepth[gd] ?? 0) * currentSpread;
     });
     sceneBufs.forEach(b => { b.depth = -currentSpread * 0.5; });
     renderer.markDirty();
@@ -422,9 +455,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   function ease(t: number) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
-  function animateTo(target: { rotX: number; rotY: number; zoom: number; panX: number; panY: number; spread: number; persp: number }, done?: () => void) {
+  function animateTo(target: { rotX: number; rotY: number; zoom: number; panX: number; panY: number; spread: number; persp: number; depthMin?: number; depthMax?: number }, done?: () => void) {
     if (animId) { cancelAnimationFrame(animId); animId = null; }
-    const from = { rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp };
+    const from = { rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp, depthMin: depthRange.min, depthMax: depthRange.max };
+    const tDepthMin = target.depthMin ?? from.depthMin;
+    const tDepthMax = target.depthMax ?? from.depthMax;
     const t0 = performance.now();
     function tick(now: number) {
       const t = ease(Math.min((now - t0) / C.ANIM_DURATION, 1));
@@ -434,12 +469,17 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       cam.panX = from.panX + (target.panX - from.panX) * t;
       cam.panY = from.panY + (target.panY - from.panY) * t;
       cam.persp = from.persp + (target.persp - from.persp) * t;
-      updateDepths(from.spread + (target.spread - from.spread) * t);
+      const rMin = from.depthMin + (tDepthMin - from.depthMin) * t;
+      const rMax = from.depthMax + (tDepthMax - from.depthMax) * t;
+      updateDepths(from.spread + (target.spread - from.spread) * t, { min: rMin, max: rMax });
       if (now - t0 < C.ANIM_DURATION) animId = requestAnimationFrame(tick);
       else {
         animId = null;
         cam.rotX = target.rotX; cam.rotY = target.rotY; cam.zoom = target.zoom;
         cam.panX = target.panX; cam.panY = target.panY; cam.persp = target.persp;
+        depthRange = { min: tDepthMin, max: tDepthMax };
+        depthMinSlider.value = String(Math.round(tDepthMin));
+        depthMaxSlider.value = String(Math.round(tDepthMax));
         spreadSlider.value = String(target.spread);
         updateDepths(); done?.();
       }
@@ -448,6 +488,30 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   }
 
   let savedSpread = defaultSpread;
+  let savedDepthRange = { min: 0, max: maxDepth };
+  let focusedAddr: string | null = null;
+
+  function exitFocus() {
+    if (!focusedAddr) return;
+    focusedAddr = null;
+    animateTo({ rotX: cam.rotX, rotY: cam.rotY, zoom: cam.zoom, panX: cam.panX, panY: cam.panY, spread: currentSpread, persp: cam.persp, depthMin: savedDepthRange.min, depthMax: savedDepthRange.max });
+  }
+
+  function focusLayer(addr: string) {
+    const l = layers.find(la => la.addr === addr);
+    if (!l) return;
+    if (focusedAddr === addr) {
+      exitFocus();
+      return;
+    }
+    // Save current range before focusing
+    if (!focusedAddr) savedDepthRange = { ...depthRange };
+    focusedAddr = addr;
+    // Center camera on layer
+    const cx = l.x1 + (l.x2 - l.x1) / 2 - sceneW / 2;
+    const cy = l.y1 + (l.y2 - l.y1) / 2 - sceneH / 2;
+    animateTo({ rotX: 0, rotY: 0, zoom: cam.zoom, panX: -cx, panY: -cy, spread: currentSpread, persp: 0, depthMin: l.localDepth, depthMax: l.localDepth });
+  }
 
   let savedPersp = cam.persp;
 
@@ -458,10 +522,21 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     });
   }
 
+  updateDepthSliderRange();
   updateDepths();
 
   // Event bindings
   spreadSlider.oninput = () => updateDepths();
+  depthMinSlider.oninput = () => {
+    depthRange.min = Number(depthMinSlider.value);
+    if (depthRange.min > depthRange.max) { depthRange.max = depthRange.min; depthMaxSlider.value = depthMinSlider.value; }
+    updateDepths();
+  };
+  depthMaxSlider.oninput = () => {
+    depthRange.max = Number(depthMaxSlider.value);
+    if (depthRange.max < depthRange.min) { depthRange.min = depthRange.max; depthMinSlider.value = depthMaxSlider.value; }
+    updateDepths();
+  };
   toggle3d.addEventListener("click", () => { is3d = toggle3d.dataset.on === "1"; spreadSlider.disabled = !is3d; animateToggle(is3d); });
   toggleOrtho.addEventListener("click", () => {
     const ortho = toggleOrtho.dataset.on === "1";
@@ -503,6 +578,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     const dx = e.clientX - lastX, dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
     if (dragging === "rotate") {
+      exitFocus();
       cam.rotY += dx * C.ROTATION_SENSITIVITY;
       cam.rotX = Math.max(-90, Math.min(90, cam.rotX - dy * C.ROTATION_SENSITIVITY));
     } else {
@@ -548,6 +624,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   function tickKeys() {
     const s = keysDown.has("shift") ? 3 : 1;
     // Accelerate
+    if (keysDown.has("arrowup") || keysDown.has("arrowdown") || keysDown.has("arrowleft") || keysDown.has("arrowright")) exitFocus();
     if (keysDown.has("arrowup"))    vel.rotX += C.KB_ACCEL * s;
     if (keysDown.has("arrowdown"))  vel.rotX -= C.KB_ACCEL * s;
     if (keysDown.has("arrowleft"))  vel.rotY -= C.KB_ACCEL * s;
@@ -604,6 +681,12 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     }
   });
 
+  canvas.addEventListener("dblclick", e => {
+    const rect = canvas.getBoundingClientRect();
+    const hit = renderer.pick(e.clientX - rect.left, e.clientY - rect.top);
+    if (hit?.layer.addr) focusLayer(hit.layer.addr);
+  });
+
   // Reset
   resetBtn.onclick = () => {
     is3d = true;
@@ -614,6 +697,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
     spreadSlider.disabled = false;
-    animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1 });
+    focusedAddr = null;
+    animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1, depthMin: 0, depthMax: maxDepth });
   };
 }
