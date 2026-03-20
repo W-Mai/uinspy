@@ -1,7 +1,7 @@
 {
   "name": "uinspy",
   "private": true,
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "module",
   "scripts": {
     "dev": "bun run dev-css.ts && bun ./index.html",
