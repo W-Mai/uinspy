@@ -49,6 +49,8 @@ export const C = {
   ROTATION_SENSITIVITY: 0.4,
   SCREEN_GAP: 2,
   ANIM_DURATION: 500,
+  // Camera control: 1 = camera moves, -1 = object moves
+  CAM_DIR: -1 as 1 | -1,
   // ViewCube
   VC_SIZE: 100,
   VC_FACE: 50,

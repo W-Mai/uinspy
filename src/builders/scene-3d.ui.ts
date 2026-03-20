@@ -585,11 +585,11 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     lastX = e.clientX; lastY = e.clientY;
     if (dragging === "rotate") {
       exitFocus();
-      cam.rotY += dx * C.ROTATION_SENSITIVITY;
-      cam.rotX = Math.max(-90, Math.min(90, cam.rotX - dy * C.ROTATION_SENSITIVITY));
+      cam.rotY += dx * C.ROTATION_SENSITIVITY * C.CAM_DIR;
+      cam.rotX = Math.max(-90, Math.min(90, cam.rotX - dy * C.ROTATION_SENSITIVITY * C.CAM_DIR));
     } else {
-      cam.panX += dx / cam.zoom;
-      cam.panY += dy / cam.zoom;
+      cam.panX += dx * C.CAM_DIR / cam.zoom;
+      cam.panY += dy * C.CAM_DIR / cam.zoom;
     }
     renderer.markDirty();
   });
@@ -631,14 +631,15 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     const s = keysDown.has("shift") ? 3 : 1;
     // Accelerate
     if (keysDown.has("arrowup") || keysDown.has("arrowdown") || keysDown.has("arrowleft") || keysDown.has("arrowright")) exitFocus();
-    if (keysDown.has("arrowup"))    vel.rotX += C.KB_ACCEL * s;
-    if (keysDown.has("arrowdown"))  vel.rotX -= C.KB_ACCEL * s;
-    if (keysDown.has("arrowleft"))  vel.rotY -= C.KB_ACCEL * s;
-    if (keysDown.has("arrowright")) vel.rotY += C.KB_ACCEL * s;
-    if (keysDown.has("w")) vel.panY -= C.KB_PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("s")) vel.panY += C.KB_PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("a")) vel.panX -= C.KB_PAN_ACCEL * s / cam.zoom;
-    if (keysDown.has("d")) vel.panX += C.KB_PAN_ACCEL * s / cam.zoom;
+    const d = C.CAM_DIR;
+    if (keysDown.has("arrowup"))    vel.rotX -= C.KB_ACCEL * s * d;
+    if (keysDown.has("arrowdown"))  vel.rotX += C.KB_ACCEL * s * d;
+    if (keysDown.has("arrowleft"))  vel.rotY += C.KB_ACCEL * s * d;
+    if (keysDown.has("arrowright")) vel.rotY -= C.KB_ACCEL * s * d;
+    if (keysDown.has("w")) vel.panY += C.KB_PAN_ACCEL * s * d / cam.zoom;
+    if (keysDown.has("s")) vel.panY -= C.KB_PAN_ACCEL * s * d / cam.zoom;
+    if (keysDown.has("a")) vel.panX += C.KB_PAN_ACCEL * s * d / cam.zoom;
+    if (keysDown.has("d")) vel.panX -= C.KB_PAN_ACCEL * s * d / cam.zoom;
     if (keysDown.has("=") || keysDown.has("+")) vel.zoom += C.KB_ZOOM_ACCEL * s;
     if (keysDown.has("-") || keysDown.has("_")) vel.zoom -= C.KB_ZOOM_ACCEL * s;
     if (keysDown.has("e")) vel.spread += C.KB_SPREAD_ACCEL * s;
