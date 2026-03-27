@@ -56,6 +56,12 @@ export function registerOverlay(key: string, overlay: typeof hlOverlays[string])
   hlOverlays[key] = overlay;
 }
 
+export function resetHL() {
+  clearHighlight();
+  for (const k in hlRegistry) delete hlRegistry[k];
+  for (const k in hlOverlays) delete hlOverlays[k];
+}
+
 // Selection & detail
 export const selectedAddr = signal<string | null>(null);
 export const objDataMap: Record<string, ObjNode> = {};

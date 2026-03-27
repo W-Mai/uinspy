@@ -117,9 +117,10 @@ function resolveCSSColor(cssVar: string): string {
 
 type DispObjs = Record<string, { addr: string; x1: number; y1: number; x2: number; y2: number }[]>;
 
-export function build3DScene(container: HTMLElement, trees: ObjectTree[], displays: Display[], dispObjs: DispObjs) {
+export function build3DScene(container: HTMLElement, trees: ObjectTree[], displays: Display[], dispObjs: DispObjs): (() => void) | void {
   const { layers, screenNames, screenMaxLocal } = flattenLayers(trees);
   if (!layers.length) { container.appendChild(el("p", "empty", "No objects.")); return; }
+  let alive = true;
 
   let maxX = 0, maxY = 0, maxDepth = 0;
   displays.forEach(d => { maxX = Math.max(maxX, d.hor_res || 0); maxY = Math.max(maxY, d.ver_res || 0); });
@@ -539,9 +540,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     if (e.button === 1 || (e.button === 0 && e.shiftKey)) { e.preventDefault(); dragging = "pan"; lastX = e.clientX; lastY = e.clientY; viewport.style.cursor = "move"; }
     else if (e.button === 0 && is3d) { dragging = "rotate"; lastX = e.clientX; lastY = e.clientY; viewport.style.cursor = "grabbing"; }
   };
-  window.addEventListener("mousemove", e => {
+  const onMouseMove = (e: MouseEvent) => {
     if (!dragging) {
-      // Hover picking — only when mouse is over the canvas
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
       if (mx < 0 || my < 0 || mx > rect.width || my > rect.height) return;
@@ -572,8 +572,10 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       cam.panY += dy / cam.zoom;
     }
     renderer.markDirty();
-  });
-  window.addEventListener("mouseup", () => { dragging = false; viewport.style.cursor = "grab"; });
+  };
+  const onMouseUp = () => { dragging = false; viewport.style.cursor = "grab"; };
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
   viewport.addEventListener("wheel", e => {
     e.preventDefault();
     if (inScreensaver) return;
@@ -652,7 +654,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     const moving = Math.abs(vel.rotX) + Math.abs(vel.rotY) + Math.abs(vel.panX) + Math.abs(vel.panY) + Math.abs(vel.zoom) + Math.abs(vel.spread) > 0.001;
     if (moving || keysDown.size > 0) renderer.markDirty();
   }
-  (function keyLoop() { tickKeys(); requestAnimationFrame(keyLoop); })();
+  (function keyLoop() { if (!alive) return; tickKeys(); requestAnimationFrame(keyLoop); })();
 
   // Click
   const pickAt = (e: MouseEvent) => { const r = canvas.getBoundingClientRect(); return renderer.pick(e.clientX - r.left, e.clientY - r.top); };
@@ -692,5 +694,13 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     updateVisibility();
     const visMax = Number(depthMaxSlider.max);
     animateTo({ rotX: C.DEFAULT_ROT_X, rotY: C.DEFAULT_ROT_Y, zoom: 1, panX: 0, panY: 0, spread: defaultSpread, persp: 1, depthMin: 0, depthMax: visMax });
+  };
+
+  return () => {
+    alive = false;
+    if (animId) cancelAnimationFrame(animId);
+    renderer.destroy();
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
   };
 }

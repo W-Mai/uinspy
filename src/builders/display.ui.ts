@@ -1,6 +1,6 @@
 // Display & Objects mega-panel with tab bar, tree, 3D scene, detail
 import { el, makePanel, badge } from "../helpers";
-import { countObjects, objDataMap, selectedAddr } from "../state";
+import { countObjects, objDataMap, selectedAddr, resetHL } from "../state";
 import { renderObjTree, renderObjDetail } from "./obj-tree.ui";
 import { build3DScene } from "./scene-3d.ui";
 import type { DashboardData, ObjNode } from "../types";
@@ -61,8 +61,12 @@ export function buildDisplayAndTrees(data: DashboardData) {
   const tabBtns: HTMLElement[] = [];
   let detailPanel: HTMLElement | null = null;
 
+  let cleanupScene: (() => void) | void;
+
   function showDisplay(idx: number) {
     tabBtns.forEach((b, j) => b.classList.toggle("active", j === idx));
+    if (cleanupScene) cleanupScene();
+    resetHL();
     contentArea.innerHTML = "";
     Object.keys(objDataMap).forEach(k => delete objDataMap[k]);
 
@@ -89,7 +93,7 @@ export function buildDisplayAndTrees(data: DashboardData) {
     entry.tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
 
     const view3d = el("div", "obj-3d-view");
-    build3DScene(view3d, [entry.tree], [d], entry.dispObjs);
+    cleanupScene = build3DScene(view3d, [entry.tree], [d], entry.dispObjs);
 
     detailPanel = html`<div class="obj-detail-view">
       <p class="empty">Select an object to inspect.</p>
