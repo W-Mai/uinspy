@@ -180,7 +180,8 @@ function compileAttrs(attrsStr: string, varName: string): string {
   let code = "";
   let m: RegExpExecArray | null;
   while ((m = attrRe.exec(attrsStr)) !== null) {
-    code += `${varName}.setAttribute("${m[1]}", "${m[2]}"); `;
+    const q = m[2].includes("${") ? "`" : '"';
+    code += `${varName}.setAttribute("${m[1]}", ${q}${m[2]}${q}); `;
   }
   return code;
 }
