@@ -18,6 +18,7 @@ declare function store<T extends Record<string, unknown>>(init: T): import("./st
 
 declare const __UINSPY_VERSION__: string;
 declare const __UINSPY_BUILD_TIME__: string;
+declare const __UINSPY_GIT_HASH__: string;
 declare const __UINSPY_SCREENSAVER__: boolean;
 declare const __UINSPY_THREE__: boolean;
 declare const __UINSPY_TITLE__: string;

@@ -9,6 +9,7 @@ await mkdir("dist");
 
 const pkg = await Bun.file("./package.json").json();
 const buildTime = new Date().toLocaleString("sv-SE", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
+const gitHash = Bun.spawnSync(["git", "rev-parse", "--short", "HEAD"]).stdout.toString().trim();
 
 const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; identifiers: boolean }, outdir: string) => ({
   entrypoints: ["./src/app.ts"],
@@ -19,6 +20,7 @@ const buildOpts = (minify: boolean | { whitespace: boolean; syntax: boolean; ide
   define: {
     __UINSPY_VERSION__: JSON.stringify(pkg.version),
     __UINSPY_BUILD_TIME__: JSON.stringify(buildTime),
+    __UINSPY_GIT_HASH__: JSON.stringify(gitHash),
     __UINSPY_SCREENSAVER__: process.env.UINSPY_NO_SCREENSAVER ? "false" : "true",
     __UINSPY_THREE__: process.env.UINSPY_THREE ? "true" : "false",
     __UINSPY_TITLE__: JSON.stringify(process.env.UINSPY_TITLE || "UINSPY"),
@@ -44,7 +46,7 @@ if (!min.success || !full.success) {
 
 // Combine app.css + all component scoped CSS, process through Tailwind
 const appCss = await Bun.file("./src/app.css").text();
-const componentCss = [...new Set(collectedCSS)].join("\n");
+const componentCss = [...new Set(collectedCSS)].sort().join("\n");
 const fullCssInput = appCss + "\n" + componentCss;
 
 const compiler = await compile(fullCssInput, {
