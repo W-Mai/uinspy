@@ -32,6 +32,10 @@ const __css = css`
   .detail-style-table { @apply w-full text-[11px]; }
   .detail-style-table th { @apply text-left p-[1px_4px] text-[9px]; }
   .detail-style-table td { @apply p-[1px_4px]; }
+  .detail-flags-wrap { @apply flex flex-wrap gap-1; }
+  .detail-flag-badge {
+    @apply inline-block rounded px-1.5 py-[1px] font-mono text-[10px] font-medium text-overlay1 bg-surface0 border-s0;
+  }
 `;
 
 export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
@@ -41,6 +45,7 @@ export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
   const sum = document.createElement("summary");
   sum.style.setProperty("--depth-color", DEPTH_COLORS[depth % DEPTH_COLORS.length]);
   sum.textContent = obj.class_name || "obj";
+  if (obj.flags_list?.includes("HIDDEN")) sum.textContent += " 👁‍🗨";
   det.appendChild(sum);
 
   if (obj.addr) {
@@ -87,6 +92,16 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     </div>
   </div>`;
   panel.appendChild(coordSec);
+
+  // Flags
+  if (obj.flags_list?.length) {
+    const flagSec = el("div", "detail-section");
+    flagSec.appendChild(el("div", "detail-section-title", "Flags"));
+    const wrap = el("div", "detail-flags-wrap");
+    obj.flags_list.forEach(f => wrap.appendChild(el("span", "detail-flag-badge", f)));
+    flagSec.appendChild(wrap);
+    panel.appendChild(flagSec);
+  }
 
   // References
   const refSec = el("div", "detail-section");

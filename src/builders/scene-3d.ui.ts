@@ -77,6 +77,7 @@ interface LayerData {
   x1: number; y1: number; x2: number; y2: number;
   depth: number; localDepth: number;
   child_count: number; style_count: number; screenIdx: number;
+  hidden: boolean;
 }
 
 function flattenLayers(trees: ObjectTree[]) {
@@ -89,18 +90,20 @@ function flattenLayers(trees: ObjectTree[]) {
     const idx = sIdx++;
     screenNames.push(s.layer_name || s.class_name || "screen_" + idx);
     let maxLocal = 0;
-    function walk(obj: ObjNode, ld: number) {
+    function walk(obj: ObjNode, ld: number, parentHidden: boolean) {
       const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
+      const hidden = parentHidden || (obj.flags_list?.includes("HIDDEN") ?? false);
       layers.push({
         addr: obj.addr, class_name: obj.class_name || "obj",
         x1: c.x1 || 0, y1: c.y1 || 0, x2: c.x2 || 0, y2: c.y2 || 0,
         depth: globalOffset + ld, localDepth: ld,
         child_count: obj.child_count || 0, style_count: obj.style_count || 0, screenIdx: idx,
+        hidden,
       });
       maxLocal = Math.max(maxLocal, ld);
-      obj.children?.forEach(ch => walk(ch, ld + 1));
+      obj.children?.forEach(ch => walk(ch, ld + 1, hidden));
     }
-    walk(s, 0);
+    walk(s, 0, false);
     screenMaxLocal[idx] = maxLocal;
     globalOffset += maxLocal + C.SCREEN_GAP;
   }));
@@ -158,6 +161,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const bufToggles: HTMLButtonElement[] = [];
   const toggleOrtho = makeToggle("Ortho", false);
   controls.append(toggle3d, toggleBorders);
+  const toggleHidden = makeToggle("Hidden", false);
+  controls.appendChild(toggleHidden);
   bufImages.forEach(bi => {
     const btn = makeToggle(bi.label, true);
     const thumb = html`<img draggable="false" style="height:1.2em;border-radius:2px;vertical-align:middle;image-rendering:pixelated"/>` as HTMLImageElement;
@@ -401,6 +406,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
 
   function updateDepths(spreadOv?: number, rangeOv?: { min: number; max: number }) {
     const bordersOn = toggleBorders.dataset.on === "1";
+    const showHidden = toggleHidden.dataset.on === "1";
     const range = rangeOv ?? depthRange;
     const screenOffset = computeScreenOffsets();
     currentSpread = spreadOv ?? (is3d ? Number(spreadSlider.value) : 0.1);
@@ -419,7 +425,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
       const sl = sceneLayers[idx];
       const gd = (screenOffset[l.screenIdx] !== undefined ? screenOffset[l.screenIdx] + l.localDepth : -1);
       const inRange = gd >= Math.round(range.min) && gd <= Math.round(range.max);
-      sl.visible = bordersOn && layerVisible[l.screenIdx] && inRange;
+      sl.visible = bordersOn && layerVisible[l.screenIdx] && inRange && (!l.hidden || showHidden);
       sl.depth = (compressedDepth[gd] ?? 0) * currentSpread;
     });
     sceneBufs.forEach(b => { b.depth = -currentSpread * 0.5; });
@@ -529,6 +535,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     animateTo({ persp: ortho ? 0 : 1 });
   });
   toggleBorders.addEventListener("click", () => updateVisibility());
+  toggleHidden.addEventListener("click", () => updateVisibility());
   bufToggles.forEach(btn => btn.addEventListener("click", () => updateVisibility()));
 
   // Mouse interaction
@@ -685,6 +692,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   resetBtn.onclick = () => {
     is3d = true;
     setToggle(toggle3d, true); setToggle(toggleBorders, true); setToggle(toggleOrtho, false);
+    setToggle(toggleHidden, false);
     bufToggles.forEach(btn => setToggle(btn, true));
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
