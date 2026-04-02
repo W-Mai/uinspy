@@ -36,6 +36,9 @@ const __css = css`
   .detail-flag-badge {
     @apply inline-block rounded px-1.5 py-[1px] font-mono text-[10px] font-medium text-overlay1 bg-surface0 border-s0;
   }
+  .detail-state-active {
+    @apply text-yellow bg-yellow/10 border-yellow/30;
+  }
 `;
 
 export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
@@ -44,7 +47,7 @@ export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
   if (obj.addr) det.id = "obj-" + obj.addr;
   const sum = document.createElement("summary");
   sum.style.setProperty("--depth-color", DEPTH_COLORS[depth % DEPTH_COLORS.length]);
-  sum.textContent = obj.class_name || "obj";
+  sum.textContent = (obj.name ? obj.name + " " : "") + (obj.class_name || "obj");
   if (obj.flags_list?.includes("HIDDEN")) sum.textContent += " 👁‍🗨";
   det.appendChild(sum);
 
@@ -103,6 +106,16 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     panel.appendChild(flagSec);
   }
 
+  // State
+  if (obj.state_list?.length) {
+    const stateSec = el("div", "detail-section");
+    stateSec.appendChild(el("div", "detail-section-title", "State"));
+    const wrap = el("div", "detail-flags-wrap");
+    obj.state_list.forEach(s => wrap.appendChild(el("span", "detail-flag-badge" + (s === "DEFAULT" ? "" : " detail-state-active"), s)));
+    stateSec.appendChild(wrap);
+    panel.appendChild(stateSec);
+  }
+
   // References
   const refSec = el("div", "detail-section");
   refSec.appendChild(el("div", "detail-section-title", "References"));
@@ -118,9 +131,44 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     row.appendChild(xref(obj.group_addr, "group"));
     refSec.appendChild(row);
   }
+  if (obj.user_data) refSec.appendChild(kvPair("user_data", obj.user_data));
+  if (obj.name) refSec.appendChild(kvPair("name", obj.name));
   refSec.appendChild(kvPair("children", String(obj.child_count || 0)));
   refSec.appendChild(kvPair("styles", String(obj.style_count || 0)));
   panel.appendChild(refSec);
+
+  // Layout & Scroll
+  const hasLayout = obj.scroll || obj.ext_click_pad || obj.ext_draw_size ||
+    obj.scrollbar_mode || obj.layer_type || obj.w_layout || obj.h_layout;
+  if (hasLayout) {
+    const layoutSec = el("div", "detail-section");
+    layoutSec.appendChild(el("div", "detail-section-title", "Layout & Scroll"));
+    if (obj.scroll) layoutSec.appendChild(kvPair("scroll", `${obj.scroll.x}, ${obj.scroll.y}`));
+    if (obj.ext_click_pad) layoutSec.appendChild(kvPair("ext_click_pad", String(obj.ext_click_pad)));
+    if (obj.ext_draw_size) layoutSec.appendChild(kvPair("ext_draw_size", String(obj.ext_draw_size)));
+    if (obj.scrollbar_mode != null) layoutSec.appendChild(kvPair("scrollbar_mode", String(obj.scrollbar_mode)));
+    if (obj.scroll_dir != null) layoutSec.appendChild(kvPair("scroll_dir", String(obj.scroll_dir)));
+    if (obj.scroll_snap_x) layoutSec.appendChild(kvPair("scroll_snap_x", String(obj.scroll_snap_x)));
+    if (obj.scroll_snap_y) layoutSec.appendChild(kvPair("scroll_snap_y", String(obj.scroll_snap_y)));
+    if (obj.layer_type) layoutSec.appendChild(kvPair("layer_type", String(obj.layer_type)));
+    if (obj.w_layout) layoutSec.appendChild(kvPair("w_layout", "true"));
+    if (obj.h_layout) layoutSec.appendChild(kvPair("h_layout", "true"));
+    panel.appendChild(layoutSec);
+  }
+
+  // Internal state bits
+  const hasInternal = obj.layout_inv || obj.is_deleting || obj.rendered || obj.skip_trans;
+  if (hasInternal) {
+    const intSec = el("div", "detail-section");
+    intSec.appendChild(el("div", "detail-section-title", "Internal"));
+    const wrap = el("div", "detail-flags-wrap");
+    if (obj.layout_inv) wrap.appendChild(el("span", "detail-flag-badge detail-state-active", "layout_inv"));
+    if (obj.is_deleting) wrap.appendChild(el("span", "detail-flag-badge detail-state-active", "is_deleting"));
+    if (obj.rendered) wrap.appendChild(el("span", "detail-flag-badge", "rendered"));
+    if (obj.skip_trans) wrap.appendChild(el("span", "detail-flag-badge", "skip_trans"));
+    intSec.appendChild(wrap);
+    panel.appendChild(intSec);
+  }
 
   // Styles
   if (obj.styles?.length) {
