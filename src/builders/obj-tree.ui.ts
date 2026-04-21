@@ -22,6 +22,7 @@ const __css = css`
   .obj-node.obj-selected > summary { @apply bg-nav-active-bg; outline: 1px solid var(--blue); }
   .detail-header { @apply flex items-center gap-2 mb-2.5 pb-2 border-b-s0; }
   .detail-class { @apply text-blue text-sm font-bold; }
+  .detail-summary-text { @apply text-overlay1 text-[12px] font-mono px-2 py-1.5 rounded bg-mantle border-s0; }
   .detail-section { @apply mb-2.5; }
   .detail-section-title { @apply uppercase text-overlay0 text-[10px] font-bold mb-1; letter-spacing: .5px; }
   .detail-coord-grid { @apply flex gap-3 font-mono text-[11px]; }
@@ -101,11 +102,19 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
   if (!obj) { panel.appendChild(el("p", "empty", "Select an object to inspect.")); return; }
 
   // Header
+  const summary = widgetSummary(obj.class_name, obj.widget_data as Record<string, unknown>);
   const hdr = html`<div class="detail-header">
     <span class="detail-class">${obj.class_name || "obj"}</span>
     <span class="mono-addr">${obj.addr}</span>
   </div>`;
   panel.appendChild(hdr);
+
+  // Summary
+  if (summary) {
+    const sumSec = el("div", "detail-section");
+    sumSec.appendChild(el("div", "detail-summary-text", summary));
+    panel.appendChild(sumSec);
+  }
 
   // Coordinates
   const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
