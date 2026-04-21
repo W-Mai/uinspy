@@ -39,7 +39,20 @@ const __css = css`
   .detail-state-active {
     @apply text-yellow bg-yellow/10 border-yellow/30;
   }
+  .detail-adv-toggle { @apply mt-1; }
+  .detail-adv-summary {
+    @apply cursor-pointer text-overlay0 text-[10px] font-medium py-0.5;
+    list-style: none;
+  }
+  .detail-adv-summary::before { content: "▸ "; }
+  .detail-adv-toggle[open] > .detail-adv-summary::before { content: "▾ "; }
 `;
+
+function formatWdVal(v: unknown): string {
+  if (v == null) return "-";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
 
 export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
   const det = document.createElement("details");
@@ -168,6 +181,57 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     if (obj.skip_trans) wrap.appendChild(el("span", "detail-flag-badge", "skip_trans"));
     intSec.appendChild(wrap);
     panel.appendChild(intSec);
+  }
+
+  // Widget Data
+  if (obj.widget_data && Object.keys(obj.widget_data).length) {
+    const wd = obj.widget_data;
+    const PRIMARY_KEYS: Record<string, string[]> = {
+      lv_label: ["text", "long_mode", "recolor"],
+      lv_image: ["src", "w", "h", "rotation", "scale_x", "scale_y", "align"],
+      lv_bar: ["cur_value", "min_value", "max_value", "start_value", "mode"],
+      lv_slider: ["cur_value", "min_value", "max_value", "start_value", "mode", "dragging"],
+      lv_arc: ["value", "min_value", "max_value", "rotation", "type"],
+      lv_switch: ["anim_state", "orientation"],
+      lv_checkbox: ["txt"],
+      lv_dropdown: ["options", "option_cnt", "sel_opt_id", "dir"],
+      lv_textarea: ["placeholder_txt", "max_length", "pwd_show_time"],
+      lv_tabview: ["tab_cur", "tab_pos", "tab_bar_size"],
+      lv_roller: ["option_cnt", "sel_opt_id", "mode"],
+      lv_chart: ["point_cnt", "hdiv_cnt", "vdiv_cnt", "type"],
+      lv_scale: ["mode", "range_min", "range_max", "total_tick_count", "angle_range", "rotation"],
+      lv_spinner: ["duration", "angle"],
+      lv_keyboard: ["mode", "popovers"],
+      lv_led: ["color", "bright"],
+      lv_spinbox: ["value", "range_min", "range_max", "step", "digit_count", "dec_point_pos"],
+      lv_calendar: ["today", "showed_date"],
+      lv_table: ["col_cnt", "row_cnt"],
+      lv_buttonmatrix: ["btn_cnt", "row_cnt", "btn_id_sel", "one_check"],
+    };
+    const primary = PRIMARY_KEYS[obj.class_name] || [];
+    const allKeys = Object.keys(wd);
+    const priKeys = allKeys.filter(k => primary.includes(k));
+    const advKeys = allKeys.filter(k => !primary.includes(k));
+
+    const wdSec = el("div", "detail-section");
+    wdSec.appendChild(el("div", "detail-section-title", "Widget · " + obj.class_name));
+
+    // Primary fields
+    for (const k of (priKeys.length ? priKeys : allKeys.slice(0, 6))) {
+      wdSec.appendChild(kvPair(k, formatWdVal(wd[k])));
+    }
+
+    // Advanced toggle
+    const rest = priKeys.length ? advKeys : allKeys.slice(6);
+    if (rest.length) {
+      const toggle = el("details", "detail-adv-toggle");
+      toggle.appendChild(el("summary", "detail-adv-summary", `${rest.length} more fields`));
+      const inner = el("div", "");
+      for (const k of rest) inner.appendChild(kvPair(k, formatWdVal(wd[k])));
+      toggle.appendChild(inner);
+      wdSec.appendChild(toggle);
+    }
+    panel.appendChild(wdSec);
   }
 
   // Styles

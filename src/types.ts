@@ -67,6 +67,7 @@ export interface ObjNode {
   layer_type?: number;
   name?: string;
   layer_name?: string;
+  widget_data?: Record<string, unknown>;
   children?: ObjNode[];
   styles?: ObjStyle[];
 }
