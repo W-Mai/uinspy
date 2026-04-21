@@ -1,8 +1,8 @@
 // Object tree rendering and detail panel
 import { el, kvPair, xref } from "../helpers";
 import { DEPTH_COLORS } from "../constants";
-import { registerHL, highlightObj, clearHighlight, selectObj, focusObj, objDataMap } from "../state";
-import type { ObjNode } from "../types";
+import { registerHL, highlightObj, clearHighlight, selectObj, focusObj, objDataMap, widgetSummary, getWidgetSpec } from "../state";
+import type { ObjNode, WidgetFieldSpec } from "../types";
 
 const __css = css`
   .obj-node { @apply ml-3; }
@@ -18,6 +18,7 @@ const __css = css`
   }
   .obj-node[open] > summary::before { border-radius: 2px; }
   .obj-node > summary:hover { @apply bg-hover-summary; }
+  .obj-summary-hint { @apply text-overlay0 ml-1; }
   .obj-node.obj-selected > summary { @apply bg-nav-active-bg; outline: 1px solid var(--blue); }
   .detail-header { @apply flex items-center gap-2 mb-2.5 pb-2 border-b-s0; }
   .detail-class { @apply text-blue text-sm font-bold; }
@@ -48,8 +49,17 @@ const __css = css`
   .detail-adv-toggle[open] > .detail-adv-summary::before { content: "▾ "; }
 `;
 
-function formatWdVal(v: unknown): string {
+function formatField(v: unknown, spec?: WidgetFieldSpec): string {
   if (v == null) return "-";
+  if (spec) {
+    if (spec.type === "enum" && spec.names && typeof v === "number") {
+      return spec.names[v] ?? String(v);
+    }
+    if (spec.type === "bool") return v ? "true" : "false";
+    if (spec.type === "string" && typeof v === "string") {
+      return v.length > 60 ? '"' + v.slice(0, 60) + '…"' : '"' + v + '"';
+    }
+  }
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
 }
@@ -60,7 +70,15 @@ export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
   if (obj.addr) det.id = "obj-" + obj.addr;
   const sum = document.createElement("summary");
   sum.style.setProperty("--depth-color", DEPTH_COLORS[depth % DEPTH_COLORS.length]);
-  sum.textContent = (obj.name ? obj.name + " " : "") + (obj.class_name || "obj");
+  const nameText = (obj.name ? obj.name + " " : "") + (obj.class_name || "obj");
+  sum.textContent = nameText;
+  const hint = widgetSummary(obj.class_name, obj.widget_data as Record<string, unknown>);
+  if (hint) {
+    const span = document.createElement("span");
+    span.className = "obj-summary-hint";
+    span.textContent = hint;
+    sum.appendChild(span);
+  }
   if (obj.flags_list?.includes("HIDDEN")) sum.textContent += " 👁‍🗨";
   det.appendChild(sum);
 
@@ -151,19 +169,20 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
   panel.appendChild(refSec);
 
   // Layout & Scroll
-  const hasLayout = obj.scroll || obj.ext_click_pad || obj.ext_draw_size ||
-    obj.scrollbar_mode || obj.layer_type || obj.w_layout || obj.h_layout;
+  const _n = (v: unknown) => v != null;
+  const hasLayout = obj.scroll || _n(obj.ext_click_pad) || _n(obj.ext_draw_size) ||
+    _n(obj.scrollbar_mode) || _n(obj.layer_type) || obj.w_layout || obj.h_layout;
   if (hasLayout) {
     const layoutSec = el("div", "detail-section");
     layoutSec.appendChild(el("div", "detail-section-title", "Layout & Scroll"));
     if (obj.scroll) layoutSec.appendChild(kvPair("scroll", `${obj.scroll.x}, ${obj.scroll.y}`));
-    if (obj.ext_click_pad) layoutSec.appendChild(kvPair("ext_click_pad", String(obj.ext_click_pad)));
-    if (obj.ext_draw_size) layoutSec.appendChild(kvPair("ext_draw_size", String(obj.ext_draw_size)));
-    if (obj.scrollbar_mode != null) layoutSec.appendChild(kvPair("scrollbar_mode", String(obj.scrollbar_mode)));
-    if (obj.scroll_dir != null) layoutSec.appendChild(kvPair("scroll_dir", String(obj.scroll_dir)));
-    if (obj.scroll_snap_x) layoutSec.appendChild(kvPair("scroll_snap_x", String(obj.scroll_snap_x)));
-    if (obj.scroll_snap_y) layoutSec.appendChild(kvPair("scroll_snap_y", String(obj.scroll_snap_y)));
-    if (obj.layer_type) layoutSec.appendChild(kvPair("layer_type", String(obj.layer_type)));
+    if (_n(obj.ext_click_pad)) layoutSec.appendChild(kvPair("ext_click_pad", String(obj.ext_click_pad)));
+    if (_n(obj.ext_draw_size)) layoutSec.appendChild(kvPair("ext_draw_size", String(obj.ext_draw_size)));
+    if (_n(obj.scrollbar_mode)) layoutSec.appendChild(kvPair("scrollbar_mode", String(obj.scrollbar_mode)));
+    if (_n(obj.scroll_dir)) layoutSec.appendChild(kvPair("scroll_dir", String(obj.scroll_dir)));
+    if (_n(obj.scroll_snap_x)) layoutSec.appendChild(kvPair("scroll_snap_x", String(obj.scroll_snap_x)));
+    if (_n(obj.scroll_snap_y)) layoutSec.appendChild(kvPair("scroll_snap_y", String(obj.scroll_snap_y)));
+    if (_n(obj.layer_type)) layoutSec.appendChild(kvPair("layer_type", String(obj.layer_type)));
     if (obj.w_layout) layoutSec.appendChild(kvPair("w_layout", "true"));
     if (obj.h_layout) layoutSec.appendChild(kvPair("h_layout", "true"));
     panel.appendChild(layoutSec);
@@ -183,51 +202,36 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     panel.appendChild(intSec);
   }
 
-  // Widget Data
+  // Widget Data (spec-driven)
   if (obj.widget_data && Object.keys(obj.widget_data).length) {
-    const wd = obj.widget_data;
-    const PRIMARY_KEYS: Record<string, string[]> = {
-      lv_label: ["text", "long_mode", "recolor"],
-      lv_image: ["src", "w", "h", "rotation", "scale_x", "scale_y", "align"],
-      lv_bar: ["cur_value", "min_value", "max_value", "start_value", "mode"],
-      lv_slider: ["cur_value", "min_value", "max_value", "start_value", "mode", "dragging"],
-      lv_arc: ["value", "min_value", "max_value", "rotation", "type"],
-      lv_switch: ["anim_state", "orientation"],
-      lv_checkbox: ["txt"],
-      lv_dropdown: ["options", "option_cnt", "sel_opt_id", "dir"],
-      lv_textarea: ["placeholder_txt", "max_length", "pwd_show_time"],
-      lv_tabview: ["tab_cur", "tab_pos", "tab_bar_size"],
-      lv_roller: ["option_cnt", "sel_opt_id", "mode"],
-      lv_chart: ["point_cnt", "hdiv_cnt", "vdiv_cnt", "type"],
-      lv_scale: ["mode", "range_min", "range_max", "total_tick_count", "angle_range", "rotation"],
-      lv_spinner: ["duration", "angle"],
-      lv_keyboard: ["mode", "popovers"],
-      lv_led: ["color", "bright"],
-      lv_spinbox: ["value", "range_min", "range_max", "step", "digit_count", "dec_point_pos"],
-      lv_calendar: ["today", "showed_date"],
-      lv_table: ["col_cnt", "row_cnt"],
-      lv_buttonmatrix: ["btn_cnt", "row_cnt", "btn_id_sel", "one_check"],
-    };
-    const primary = PRIMARY_KEYS[obj.class_name] || [];
+    const wd = obj.widget_data as Record<string, unknown>;
+    const spec = getWidgetSpec(obj.class_name);
+    const fieldSpecs = spec?.fields || {};
+    const primary = spec?.primary || [];
     const allKeys = Object.keys(wd);
-    const priKeys = allKeys.filter(k => primary.includes(k));
-    const advKeys = allKeys.filter(k => !primary.includes(k));
+    const priKeys = primary.filter(k => k in wd);
+    const advKeys = allKeys.filter(k => !priKeys.includes(k));
 
     const wdSec = el("div", "detail-section");
     wdSec.appendChild(el("div", "detail-section-title", "Widget · " + obj.class_name));
 
-    // Primary fields
-    for (const k of (priKeys.length ? priKeys : allKeys.slice(0, 6))) {
-      wdSec.appendChild(kvPair(k, formatWdVal(wd[k])));
-    }
+    const renderField = (k: string) => {
+      const fs = fieldSpecs[k] as WidgetFieldSpec | undefined;
+      const raw = wd[k];
+      wdSec.appendChild(kvPair(k, formatField(raw, fs)));
+    };
 
-    // Advanced toggle
+    for (const k of (priKeys.length ? priKeys : allKeys.slice(0, 6))) renderField(k);
+
     const rest = priKeys.length ? advKeys : allKeys.slice(6);
     if (rest.length) {
       const toggle = el("details", "detail-adv-toggle");
       toggle.appendChild(el("summary", "detail-adv-summary", `${rest.length} more fields`));
       const inner = el("div", "");
-      for (const k of rest) inner.appendChild(kvPair(k, formatWdVal(wd[k])));
+      for (const k of rest) {
+        const fs = fieldSpecs[k] as WidgetFieldSpec | undefined;
+        inner.appendChild(kvPair(k, formatField(wd[k], fs)));
+      }
       toggle.appendChild(inner);
       wdSec.appendChild(toggle);
     }

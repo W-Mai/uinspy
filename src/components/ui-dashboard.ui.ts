@@ -1,5 +1,5 @@
 //@ component("ui-dashboard")
-import { dashData, countObjects } from "../state";
+import { dashData, countObjects, setWidgetSpecs } from "../state";
 import { STAT_DEFS } from "../constants";
 import { makeStatPanel, el } from "../helpers";
 import { buildDisplayAndTrees } from "../builders/display.ui";
@@ -55,6 +55,7 @@ class UiDashboard extends BaseComponent {
     dashData.sub(() => {
       const data = dashData.val;
       if (!data) return;
+      setWidgetSpecs(data.widget_specs || {});
       grid.innerHTML = "";
       const bento = el("div", "bento");
 

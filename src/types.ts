@@ -4,6 +4,7 @@ export interface DashboardData {
   meta?: { timestamp?: string; lvgl_version?: string };
   displays?: Display[];
   object_trees?: ObjectTree[];
+  widget_specs?: Record<string, WidgetSpec>;
   animations?: Animation[];
   timers?: Timer[];
   image_cache?: ImageCacheEntry[];
@@ -187,4 +188,15 @@ export interface FsDriver {
   read_cb: string;
   write_cb: string;
   close_cb: string;
+}
+
+export interface WidgetFieldSpec {
+  type: string;
+  names?: string[];
+}
+
+export interface WidgetSpec {
+  summary_tpl?: string;
+  primary?: string[];
+  fields?: Record<string, WidgetFieldSpec>;
 }

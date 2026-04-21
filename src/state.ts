@@ -1,6 +1,6 @@
 // Global reactive state for cross-component communication
 import { signal } from "../framework";
-import type { DashboardData, ObjNode } from "./types";
+import type { DashboardData, ObjNode, WidgetSpec } from "./types";
 
 // Highlight system
 const hlAddr = signal<string | null>(null);
@@ -75,6 +75,26 @@ export function selectObj(addr: string) {
 
 // Dashboard data
 export const dashData = signal<DashboardData | null>(null);
+
+// Widget specs (global lookup)
+export let widgetSpecs: Record<string, WidgetSpec> = {};
+export function setWidgetSpecs(specs: Record<string, WidgetSpec>) { widgetSpecs = specs; }
+
+export function getWidgetSpec(className: string): WidgetSpec | undefined {
+  return widgetSpecs[className] || widgetSpecs["lv_" + className];
+}
+
+export function widgetSummary(className: string, wd?: Record<string, unknown> | null): string {
+  if (!wd) return "";
+  const spec = getWidgetSpec(className);
+  if (!spec?.summary_tpl) return "";
+  return spec.summary_tpl.replace(/\{(\w+)\}/g, (_, k) => {
+    const v = wd[k];
+    if (v == null) return "";
+    const s = String(v);
+    return s.length > 24 ? s.slice(0, 24) + "…" : s;
+  });
+}
 
 // Count objects in trees
 export function countObjects(trees: { screens: ObjNode[] }[]): number {
