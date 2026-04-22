@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-04-22
+
+### Added
+
+- Spec-driven widget rendering — summary template, primary fields, enum/bool formatting all from JSON.
+- Widget summary section in detail panel (standalone card below header).
+- Widget summary hint in object tree node labels.
+- Props toggle in 3D scene — show widget summary text on layer surfaces with perspective-aware affine transform.
+- `widgetSummary()` template renderer using `widget_specs` from dashboard JSON.
+
+### Changed
+
+- Remove hardcoded `PRIMARY_KEYS` table; primary/advanced split now driven by `widget_specs.primary`.
+- `formatField()` replaces `formatWdVal()` with spec-aware enum names, bool, and string formatting.
+
+### Fixed
+
+- Layout/scroll detail fields with value `0` were hidden due to truthy checks; now use `!= null`.
+
 ## [0.5.0] - 2026-04-21
 
 ### Added
@@ -189,7 +208,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Embedded JSON data via `{{JSON_DATA}}` placeholder.
 - Self-contained single HTML file output.
 
-[Unreleased]: https://github.com/w-mai/uinspy/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/w-mai/uinspy/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/w-mai/uinspy/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/w-mai/uinspy/compare/v0.4.6...v0.5.0
 [0.4.6]: https://github.com/w-mai/uinspy/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/w-mai/uinspy/compare/v0.4.4...v0.4.5
