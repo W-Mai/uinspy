@@ -102,9 +102,13 @@ export class ThreeRenderer implements ISceneRenderer {
 
   markDirty() { this.dirty = true; }
 
+  showLabels = false;
+  private labelSprites: THREE.Sprite[] = [];
+
   private rebuildLayerMeshes() {
     this.layerGroup.clear();
     this.layerMeshes = [];
+    this.labelSprites = [];
 
     this.layers.forEach((l, i) => {
       const r = 0; // border radius — ready for future use
@@ -167,6 +171,31 @@ export class ThreeRenderer implements ISceneRenderer {
       mesh.userData = { layerIndex: i, layer: l };
       this.layerMeshes.push(mesh);
       this.layerGroup.add(mesh);
+
+      // Label texture
+      if (l.label) {
+        const lc = document.createElement("canvas");
+        const lctx = lc.getContext("2d")!;
+        lc.width = Math.max(64, Math.ceil(l.w));
+        lc.height = Math.max(16, Math.ceil(l.h));
+        const fontSize = Math.max(8, Math.min(14, lc.height * 0.6));
+        lctx.font = `bold ${fontSize}px system-ui`;
+        lctx.textAlign = "center";
+        lctx.textBaseline = "middle";
+        lctx.fillStyle = l.borderColor;
+        lctx.fillText(l.label, lc.width / 2, lc.height / 2, lc.width * 0.95);
+        const tex = new THREE.CanvasTexture(lc);
+        tex.minFilter = THREE.LinearFilter;
+        const labelGeo = new THREE.PlaneGeometry(l.w, l.h);
+        const labelMat = new THREE.MeshBasicMaterial({
+          map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        });
+        const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+        labelMesh.visible = false;
+        mesh.add(labelMesh); // child of layer mesh, inherits position
+        labelMesh.position.set(0, 0, 0.1); // slight offset to avoid z-fighting
+        this.labelSprites.push(labelMesh as any);
+      }
     });
   }
 
@@ -355,6 +384,8 @@ export class ThreeRenderer implements ISceneRenderer {
   private render() {
     this.resizeRenderer();
     this.syncTransforms();
+    // Toggle label visibility
+    this.labelSprites.forEach(s => { s.visible = this.showLabels; });
     this.renderer.render(this.scene, this.camera);
   }
 

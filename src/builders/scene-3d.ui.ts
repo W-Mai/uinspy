@@ -1,7 +1,7 @@
 // 3D exploded object tree view
 import { el } from "../helpers";
 import { C, DEPTH_COLORS } from "../constants";
-import { registerHL, highlightObj, clearHighlight, selectObj, onHL, onFocus } from "../state";
+import { registerHL, highlightObj, clearHighlight, selectObj, onHL, onFocus, widgetSummary } from "../state";
 import { Canvas2DRenderer } from "./canvas2d-renderer";
 import type { SceneLayer, BufImage, Camera, ISceneRenderer } from "./scene-renderer";
 import type { Display, ObjectTree, ObjNode } from "../types";
@@ -78,6 +78,7 @@ interface LayerData {
   depth: number; localDepth: number;
   child_count: number; style_count: number; screenIdx: number;
   hidden: boolean;
+  summary: string;
 }
 
 function flattenLayers(trees: ObjectTree[]) {
@@ -99,6 +100,7 @@ function flattenLayers(trees: ObjectTree[]) {
         depth: globalOffset + ld, localDepth: ld,
         child_count: obj.child_count || 0, style_count: obj.style_count || 0, screenIdx: idx,
         hidden,
+        summary: widgetSummary(obj.class_name, obj.widget_data as Record<string, unknown>),
       });
       maxLocal = Math.max(maxLocal, ld);
       obj.children?.forEach(ch => walk(ch, ld + 1, hidden));
@@ -162,7 +164,9 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   const toggleOrtho = makeToggle("Ortho", false);
   controls.append(toggle3d, toggleBorders);
   const toggleHidden = makeToggle("Hidden", false);
+  const toggleLabels = makeToggle("Props", false);
   controls.appendChild(toggleHidden);
+  controls.appendChild(toggleLabels);
   bufImages.forEach(bi => {
     const btn = makeToggle(bi.label, true);
     const thumb = html`<img draggable="false" style="height:1.2em;border-radius:2px;vertical-align:middle;image-rendering:pixelated"/>` as HTMLImageElement;
@@ -367,6 +371,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     borderColor: resolveCSSColor(DEPTH_COLORS[l.depth % DEPTH_COLORS.length]),
     addr: l.addr,
     info: l.class_name + "@" + (l.addr || "?") + " [" + l.x1 + "," + l.y1 + "," + l.x2 + "," + l.y2 + "] children=" + l.child_count + " styles=" + l.style_count,
+    label: l.summary ? l.class_name + " " + l.summary : l.class_name,
     screenIdx: l.screenIdx,
     visible: true,
   }));
@@ -536,6 +541,7 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
   });
   toggleBorders.addEventListener("click", () => updateVisibility());
   toggleHidden.addEventListener("click", () => updateVisibility());
+  toggleLabels.addEventListener("click", () => { (renderer as any).showLabels = toggleLabels.dataset.on === "1"; renderer.markDirty(); });
   bufToggles.forEach(btn => btn.addEventListener("click", () => updateVisibility()));
 
   // Mouse interaction
@@ -693,6 +699,8 @@ export function build3DScene(container: HTMLElement, trees: ObjectTree[], displa
     is3d = true;
     setToggle(toggle3d, true); setToggle(toggleBorders, true); setToggle(toggleOrtho, false);
     setToggle(toggleHidden, false);
+    setToggle(toggleLabels, false);
+    (renderer as any).showLabels = false;
     bufToggles.forEach(btn => setToggle(btn, true));
     screenNames.forEach((name, i) => { layerVisible[i] = name === "act_scr" || screenNames.length === 1; });
     layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));

@@ -6,6 +6,7 @@ export interface SceneLayer {
   borderColor: string;
   addr: string;
   info: string;
+  label: string;
   screenIdx: number;
   visible: boolean;
 }

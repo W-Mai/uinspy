@@ -15,6 +15,7 @@ export class Canvas2DRenderer implements ISceneRenderer {
   private hlAddr: string | null = null;
   private dirty = true;
   private rafId: number | null = null;
+  showLabels = false;
   // Projected quads cache for picking
   private projected: { quad: [number, number][]; layer: SceneLayer; z: number }[] = [];
 
@@ -178,6 +179,29 @@ export class Canvas2DRenderer implements ISceneRenderer {
       ctx.strokeStyle = isHl ? "rgba(137, 180, 250, 0.9)" : l.borderColor;
       ctx.lineWidth = isHl ? 2 : 1;
       ctx.stroke();
+
+      // Draw label text on layer surface
+      if (this.showLabels && l.label) {
+        // Average top+bottom edges for x-axis, left+right for y-axis (centered affine)
+        const ax = ((q[1][0] - q[0][0]) + (q[2][0] - q[3][0])) / 2;
+        const ay = ((q[1][1] - q[0][1]) + (q[2][1] - q[3][1])) / 2;
+        const bx = ((q[3][0] - q[0][0]) + (q[2][0] - q[1][0])) / 2;
+        const by = ((q[3][1] - q[0][1]) + (q[2][1] - q[1][1])) / 2;
+        const qw = Math.hypot(ax, ay), qh = Math.hypot(bx, by);
+        if (qw > 30) {
+          // Origin at quad centroid
+          const ox = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4;
+          const oy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4;
+          ctx.save();
+          ctx.transform(ax / qw, ay / qw, bx / qh, by / qh, ox, oy);
+          ctx.font = "bold 10px system-ui";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = isHl ? "#89b4fa" : l.borderColor;
+          ctx.fillText(l.label, 0, 0, qw * 0.9);
+          ctx.restore();
+        }
+      }
     });
   }
 
