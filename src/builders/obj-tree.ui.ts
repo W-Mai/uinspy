@@ -2,7 +2,7 @@
 import { el, kvPair, xref } from "../helpers";
 import { DEPTH_COLORS } from "../constants";
 import { registerHL, highlightObj, clearHighlight, selectObj, focusObj, objDataMap, widgetSummary, getWidgetSpec } from "../state";
-import type { ObjNode, WidgetFieldSpec } from "../types";
+import type { ObjNode, WidgetFieldSpec, EventEntry } from "../types";
 
 const __css = css`
   .obj-node { @apply ml-3; }
@@ -48,6 +48,13 @@ const __css = css`
   }
   .detail-adv-summary::before { content: "▸ "; }
   .detail-adv-toggle[open] > .detail-adv-summary::before { content: "▾ "; }
+  .detail-color-swatch {
+    @apply inline-block w-3 h-3 rounded-sm mr-1.5 align-middle border-s0;
+  }
+  .detail-field-label { @apply text-overlay1 text-[10px] font-semibold mb-0.5; }
+  .detail-events-table td { @apply font-mono; }
+  .detail-events-table .detail-event-input td { @apply text-txt; }
+  .detail-events-table tbody tr:not(.detail-event-input) td { @apply text-overlay0; }
 `;
 
 function formatField(v: unknown, spec?: WidgetFieldSpec): string {
@@ -63,6 +70,30 @@ function formatField(v: unknown, spec?: WidgetFieldSpec): string {
   }
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
+}
+
+/* Render an object's event handlers as a compact table: each row pairs the
+ * event id/name with its callback pointer + user_data. Input events are shown
+ * in the foreground color, non-input ones dimmed. */
+function buildEventsTable(events: EventEntry[]): HTMLElement {
+  const tbl = document.createElement("table");
+  tbl.className = "detail-style-table detail-events-table";
+  const head = tbl.createTHead().insertRow();
+  ["code", "event", "callback", "user_data"].forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    head.appendChild(th);
+  });
+  const body = tbl.createTBody();
+  events.forEach(ev => {
+    const r = body.insertRow();
+    if (ev.is_input) r.className = "detail-event-input";
+    r.insertCell().textContent = String(ev.code);
+    r.insertCell().textContent = ev.name;
+    r.insertCell().textContent = ev.cb;
+    r.insertCell().textContent = ev.user_data;
+  });
+  return tbl;
 }
 
 export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
@@ -118,7 +149,8 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
 
   // Coordinates
   const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
-  const w = (c.x2 || 0) - (c.x1 || 0), h = (c.y2 || 0) - (c.y1 || 0);
+  /* LVGL areas are inclusive: width = x2 - x1 + 1 (lv_area_get_width). */
+  const w = (c.x2 || 0) - (c.x1 || 0) + 1, h = (c.y2 || 0) - (c.y1 || 0) + 1;
   const coordSec = html`<div class="detail-section">
     <div class="detail-section-title">Coordinates</div>
     <div class="detail-coord-grid">
@@ -225,8 +257,15 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     wdSec.appendChild(el("div", "detail-section-title", "Widget · " + obj.class_name));
 
     const renderField = (k: string) => {
-      const fs = fieldSpecs[k] as WidgetFieldSpec | undefined;
       const raw = wd[k];
+      /* events: array of {code,name,cb,user_data} -> render a handler table
+       * (event id + name + callback pointer) rather than a JSON blob. */
+      if (k === "events" && Array.isArray(raw) && raw.length && typeof raw[0] === "object") {
+        wdSec.appendChild(el("div", "detail-field-label", "events"));
+        wdSec.appendChild(buildEventsTable(raw as unknown as EventEntry[]));
+        return;
+      }
+      const fs = fieldSpecs[k] as WidgetFieldSpec | undefined;
       wdSec.appendChild(kvPair(k, formatField(raw, fs)));
     };
 
@@ -263,7 +302,17 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
         s.properties.forEach(p => {
           const r = tbody.insertRow();
           r.insertCell().textContent = p.prop_name;
-          r.insertCell().textContent = p.value_str;
+          const vc = r.insertCell();
+          if (p.color_rgb) {
+            /* paint a small swatch before the #RRGGBB text */
+            const sw = el("span", "detail-color-swatch");
+            sw.style.background = `rgb(${p.color_rgb.r},${p.color_rgb.g},${p.color_rgb.b})`;
+            vc.appendChild(sw);
+            vc.appendChild(document.createTextNode(p.value_str));
+          }
+          else {
+            vc.textContent = p.value_str;
+          }
         });
         card.appendChild(tbl);
       }

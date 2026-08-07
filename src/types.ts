@@ -77,7 +77,23 @@ export interface ObjStyle {
   index: number;
   selector_str: string;
   flags_str: string;
-  properties?: { prop_name: string; value_str: string }[];
+  properties?: StyleProp[];
+}
+
+export interface StyleProp {
+  prop_name: string;
+  value_str: string;
+  /** present for color-typed props so the viewer can paint a swatch */
+  color_rgb?: { r: number; g: number; b: number };
+}
+
+/** One row of an object's event handler table (widget_data.events entry). */
+export interface EventEntry {
+  code: number;
+  name: string;
+  is_input: boolean;
+  cb: string;
+  user_data: string;
 }
 
 export interface Animation {
