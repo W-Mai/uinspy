@@ -68,6 +68,7 @@ export interface ObjNode {
   layer_type?: number;
   name?: string;
   layer_name?: string;
+  events?: EventEntry[];
   widget_data?: Record<string, unknown>;
   children?: ObjNode[];
   styles?: ObjStyle[];
@@ -87,11 +88,9 @@ export interface StyleProp {
   color_rgb?: { r: number; g: number; b: number };
 }
 
-/** One row of an object's event handler table (widget_data.events entry). */
+/** One row of an object's event handler table. */
 export interface EventEntry {
-  code: number;
   name: string;
-  is_input: boolean;
   cb: string;
   user_data: string;
 }

@@ -2,7 +2,7 @@
 import { el, kvPair, xref } from "../helpers";
 import { DEPTH_COLORS } from "../constants";
 import { registerHL, highlightObj, clearHighlight, selectObj, focusObj, objDataMap, widgetSummary, getWidgetSpec } from "../state";
-import type { ObjNode, WidgetFieldSpec, EventEntry } from "../types";
+import type { ObjNode, WidgetFieldSpec } from "../types";
 
 const __css = css`
   .obj-node { @apply ml-3; }
@@ -51,10 +51,6 @@ const __css = css`
   .detail-color-swatch {
     @apply inline-block w-3 h-3 rounded-sm mr-1.5 align-middle border-s0;
   }
-  .detail-field-label { @apply text-overlay1 text-[10px] font-semibold mb-0.5; }
-  .detail-events-table td { @apply font-mono; }
-  .detail-events-table .detail-event-input td { @apply text-txt; }
-  .detail-events-table tbody tr:not(.detail-event-input) td { @apply text-overlay0; }
 `;
 
 function formatField(v: unknown, spec?: WidgetFieldSpec): string {
@@ -70,30 +66,6 @@ function formatField(v: unknown, spec?: WidgetFieldSpec): string {
   }
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
-}
-
-/* Render an object's event handlers as a compact table: each row pairs the
- * event id/name with its callback pointer + user_data. Input events are shown
- * in the foreground color, non-input ones dimmed. */
-function buildEventsTable(events: EventEntry[]): HTMLElement {
-  const tbl = document.createElement("table");
-  tbl.className = "detail-style-table detail-events-table";
-  const head = tbl.createTHead().insertRow();
-  ["code", "event", "callback", "user_data"].forEach(h => {
-    const th = document.createElement("th");
-    th.textContent = h;
-    head.appendChild(th);
-  });
-  const body = tbl.createTBody();
-  events.forEach(ev => {
-    const r = body.insertRow();
-    if (ev.is_input) r.className = "detail-event-input";
-    r.insertCell().textContent = String(ev.code);
-    r.insertCell().textContent = ev.name;
-    r.insertCell().textContent = ev.cb;
-    r.insertCell().textContent = ev.user_data;
-  });
-  return tbl;
 }
 
 export function renderObjTree(obj: ObjNode, depth = 0): HTMLElement {
@@ -188,6 +160,29 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     panel.appendChild(stateSec);
   }
 
+  // Events
+  if (obj.events?.length) {
+    const evSec = el("div", "detail-section");
+    evSec.appendChild(el("div", "detail-section-title", "Events"));
+    const tbl = document.createElement("table");
+    tbl.className = "detail-style-table";
+    const head = tbl.createTHead().insertRow();
+    ["event", "callback", "user_data"].forEach(h => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      head.appendChild(th);
+    });
+    const body = tbl.createTBody();
+    obj.events.forEach(ev => {
+      const r = body.insertRow();
+      r.insertCell().textContent = ev.name;
+      r.insertCell().textContent = ev.cb;
+      r.insertCell().textContent = ev.user_data;
+    });
+    evSec.appendChild(tbl);
+    panel.appendChild(evSec);
+  }
+
   // References
   const refSec = el("div", "detail-section");
   refSec.appendChild(el("div", "detail-section-title", "References"));
@@ -257,16 +252,8 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     wdSec.appendChild(el("div", "detail-section-title", "Widget · " + obj.class_name));
 
     const renderField = (k: string) => {
-      const raw = wd[k];
-      /* events: array of {code,name,cb,user_data} -> render a handler table
-       * (event id + name + callback pointer) rather than a JSON blob. */
-      if (k === "events" && Array.isArray(raw) && raw.length && typeof raw[0] === "object") {
-        wdSec.appendChild(el("div", "detail-field-label", "events"));
-        wdSec.appendChild(buildEventsTable(raw as unknown as EventEntry[]));
-        return;
-      }
       const fs = fieldSpecs[k] as WidgetFieldSpec | undefined;
-      wdSec.appendChild(kvPair(k, formatField(raw, fs)));
+      wdSec.appendChild(kvPair(k, formatField(wd[k], fs)));
     };
 
     for (const k of (priKeys.length ? priKeys : allKeys.slice(0, 6))) renderField(k);
