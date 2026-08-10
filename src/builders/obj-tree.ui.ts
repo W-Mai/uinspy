@@ -48,6 +48,9 @@ const __css = css`
   }
   .detail-adv-summary::before { content: "▸ "; }
   .detail-adv-toggle[open] > .detail-adv-summary::before { content: "▾ "; }
+  .detail-color-swatch {
+    @apply inline-block w-3 h-3 rounded-sm mr-1.5 align-middle border-s0;
+  }
 `;
 
 function formatField(v: unknown, spec?: WidgetFieldSpec): string {
@@ -118,7 +121,8 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
 
   // Coordinates
   const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
-  const w = (c.x2 || 0) - (c.x1 || 0), h = (c.y2 || 0) - (c.y1 || 0);
+  /* coords are inclusive on both ends: width = x2 - x1 + 1. */
+  const w = (c.x2 || 0) - (c.x1 || 0) + 1, h = (c.y2 || 0) - (c.y1 || 0) + 1;
   const coordSec = html`<div class="detail-section">
     <div class="detail-section-title">Coordinates</div>
     <div class="detail-coord-grid">
@@ -154,6 +158,29 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
     obj.state_list.forEach(s => wrap.appendChild(el("span", "detail-flag-badge" + (s === "DEFAULT" ? "" : " detail-state-active"), s)));
     stateSec.appendChild(wrap);
     panel.appendChild(stateSec);
+  }
+
+  // Events
+  if (obj.events?.length) {
+    const evSec = el("div", "detail-section");
+    evSec.appendChild(el("div", "detail-section-title", "Events"));
+    const tbl = document.createElement("table");
+    tbl.className = "detail-style-table";
+    const head = tbl.createTHead().insertRow();
+    ["event", "callback", "user_data"].forEach(h => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      head.appendChild(th);
+    });
+    const body = tbl.createTBody();
+    obj.events.forEach(ev => {
+      const r = body.insertRow();
+      r.insertCell().textContent = ev.name;
+      r.insertCell().textContent = ev.cb;
+      r.insertCell().textContent = ev.user_data;
+    });
+    evSec.appendChild(tbl);
+    panel.appendChild(evSec);
   }
 
   // References
@@ -263,7 +290,17 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
         s.properties.forEach(p => {
           const r = tbody.insertRow();
           r.insertCell().textContent = p.prop_name;
-          r.insertCell().textContent = p.value_str;
+          const vc = r.insertCell();
+          if (p.color_rgb) {
+            /* paint a small swatch before the #RRGGBB text */
+            const sw = el("span", "detail-color-swatch");
+            sw.style.background = `rgb(${p.color_rgb.r},${p.color_rgb.g},${p.color_rgb.b})`;
+            vc.appendChild(sw);
+            vc.appendChild(document.createTextNode(p.value_str));
+          }
+          else {
+            vc.textContent = p.value_str;
+          }
         });
         card.appendChild(tbl);
       }

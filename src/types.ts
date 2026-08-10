@@ -68,6 +68,7 @@ export interface ObjNode {
   layer_type?: number;
   name?: string;
   layer_name?: string;
+  events?: EventEntry[];
   widget_data?: Record<string, unknown>;
   children?: ObjNode[];
   styles?: ObjStyle[];
@@ -77,7 +78,21 @@ export interface ObjStyle {
   index: number;
   selector_str: string;
   flags_str: string;
-  properties?: { prop_name: string; value_str: string }[];
+  properties?: StyleProp[];
+}
+
+export interface StyleProp {
+  prop_name: string;
+  value_str: string;
+  /** present for color-typed props so the viewer can paint a swatch */
+  color_rgb?: { r: number; g: number; b: number };
+}
+
+/** One row of an object's event handler table. */
+export interface EventEntry {
+  name: string;
+  cb: string;
+  user_data: string;
 }
 
 export interface Animation {
