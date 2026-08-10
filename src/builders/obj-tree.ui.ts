@@ -121,7 +121,7 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
 
   // Coordinates
   const c = obj.coords || { x1: 0, y1: 0, x2: 0, y2: 0 };
-  /* LVGL areas are inclusive: width = x2 - x1 + 1 (lv_area_get_width). */
+  /* coords are inclusive on both ends: width = x2 - x1 + 1. */
   const w = (c.x2 || 0) - (c.x1 || 0) + 1, h = (c.y2 || 0) - (c.y1 || 0) + 1;
   const coordSec = html`<div class="detail-section">
     <div class="detail-section-title">Coordinates</div>
@@ -253,7 +253,8 @@ export function renderObjDetail(addr: string, panel: HTMLElement) {
 
     const renderField = (k: string) => {
       const fs = fieldSpecs[k] as WidgetFieldSpec | undefined;
-      wdSec.appendChild(kvPair(k, formatField(wd[k], fs)));
+      const raw = wd[k];
+      wdSec.appendChild(kvPair(k, formatField(raw, fs)));
     };
 
     for (const k of (priKeys.length ? priKeys : allKeys.slice(0, 6))) renderField(k);
